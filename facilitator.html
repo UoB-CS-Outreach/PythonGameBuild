@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#081f3d">
+<meta name="robots" content="noindex">
+<title>Game Build Sprint Facilitator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+:root{--navy:#081f3d;--navy-2:#12325c;--bg:#f3f5f9;--card:#fff;--ink:#14213d;--muted:#5b6578;--line:#dde3ec;--pass:#137a3c;--fail:#b3261e;--gold:#f2a900}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+header{background:var(--navy);color:#fff;padding:.6rem 1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+header img{height:34px}
+header .t{font-weight:700;font-size:1.15rem}
+header .grow{flex:1}
+header button{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:8px;padding:.3rem .75rem;cursor:pointer;font:inherit}
+main{max-width:1250px;margin:0 auto;padding:1rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem}
+.wide{grid-column:1/-1}
+h2{font-size:1.2rem;margin:0 0 .6rem} h3{font-size:1rem;margin:1rem 0 .3rem}
+.btn{border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:8px;padding:.45rem .9rem;cursor:pointer;font:inherit;font-weight:600}
+.btn.sec{background:#fff;color:var(--navy)}
+.row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+#clock{font-size:5rem;font-weight:800;font-variant-numeric:tabular-nums;text-align:center;letter-spacing:.03em;margin:.2rem 0}
+#clock.low{color:var(--fail)}
+input[type=text],input[type=number]{font:inherit;padding:.45rem .6rem;border:1px solid var(--line);border-radius:8px}
+table{width:100%;border-collapse:collapse}
+td,th{padding:.4rem .5rem;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--muted);font-weight:600;font-size:.9rem}
+td.num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+tr.top1 td{background:#fff6dd}
+.msg{min-height:1.4em;font-weight:600;margin:.4rem 0}
+.msg.ok{color:var(--pass)} .msg.bad{color:var(--fail)}
+.muted{color:var(--muted)} .small{font-size:.9rem}
+ol,ul{padding-left:1.3rem;margin:.3rem 0}
+li{margin:.2rem 0}
+details{border:1px solid var(--line);border-radius:8px;padding:.5rem .8rem;margin:.5rem 0;background:#fff}
+summary{cursor:pointer;font-weight:600;color:var(--navy-2)}
+pre{background:#f7f8fb;border:1px solid var(--line);border-radius:8px;padding:.6rem;overflow:auto;font-size:.88rem}
+code,pre{font-family:ui-monospace,Consolas,Menlo,monospace}
+.x{background:none;border:0;color:var(--fail);cursor:pointer;font-size:1rem}
+/* Projector mode */
+body.proj main{grid-template-columns:1fr 1fr;max-width:none}
+body.proj .notproj{display:none}
+body.proj #clock{font-size:9rem}
+body.proj #board td{font-size:1.5rem}
+body.proj .addrow{display:none}
+</style>
+</head>
+<body>
+<header>
+  <img id="logo" alt="">
+  <div class="t">Game Build Sprint: facilitator</div>
+  <div class="grow"></div>
+  <button type="button" id="projBtn">Projector view</button>
+</header>
+<main>
+  <section class="card">
+    <h2>Countdown</h2>
+    <div id="clock">45:00</div>
+    <div class="row notproj" style="justify-content:center">
+      <button class="btn" type="button" id="startBtn">Start</button>
+      <button class="btn sec" type="button" id="plusBtn">+1 min</button>
+      <button class="btn sec" type="button" id="minusBtn">−1 min</button>
+      <button class="btn sec" type="button" id="resetBtn">Reset</button>
+      <label class="small">Minutes <input type="number" id="mins" min="1" max="180" style="width:5rem"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Leaderboard</h2>
+    <form class="row addrow" id="addForm">
+      <input type="text" id="tName" placeholder="Team name" maxlength="24" style="flex:1;min-width:140px" aria-label="Team name">
+      <input type="text" id="tCode" placeholder="GBS-XXX-XXX" style="width:10rem;text-transform:uppercase" aria-label="Team code">
+      <button class="btn" type="submit">Add</button>
+    </form>
+    <div class="msg" id="addMsg" aria-live="polite"></div>
+    <table id="board"><thead><tr><th>#</th><th>Team</th><th style="text-align:right">Points</th><th class="notproj"></th></tr></thead><tbody></tbody></table>
+    <div class="row notproj" style="margin-top:.6rem"><button class="btn sec" type="button" id="clearBtn">Clear leaderboard</button></div>
+    <p class="small muted notproj">Type the team name exactly as the team entered it; capitals don't matter. If a team adds a new code later, its row is updated. The leaderboard is saved on this computer only.</p>
+  </section>
+
+  <section class="card wide notproj">
+    <h2>Run sheet (60 minutes)</h2>
+    <ol>
+      <li><b>0–5 min: brief.</b> Teams of 3–5 open the student page on one device each. Explain the story: they are developers at a games studio, building a Rock Paper Scissors game from six tickets. Each ticket is one function with automatic tests. Point out the choice of code blocks or Python, and that the game panel switches on as they complete stages.</li>
+      <li><b>5–7 min: the AI comparison.</b> Explain the “Compare with AI” panel: after passing a stage, they ask an AI for the same function, test its code, and give a verdict for bonus points. The simulated assistant, Pixel, is selected by default for schools where chatbots are blocked or not allowed. Pixel deliberately makes realistic mistakes: its first answer is usually wrong, even for a good prompt, and it explains its code confidently either way. Teams should test its code, then tell Pixel what went wrong and ask again. Ask them to write their <i>own</i> prompts rather than pasting the whole specification every time.</li>
+      <li><b>7–50 min: sprint.</b> Start the countdown. Circulate and help. Most teams finish stages 1–4 in 25–30 minutes. Stage 5 and the stage 6 strategy tournament stretch stronger teams. Hints cost 15 points each.</li>
+      <li><b>50–52 min: codes.</b> Teams press “Finish and get code” and read out their team name and code. Add them to the leaderboard and switch to projector view.</li>
+      <li><b>52–60 min: debrief.</b> Use the prompts below, then the course and careers slide.</li>
+    </ol>
+    <h3>Scoring</h3>
+    <ul class="small">
+      <li>Stages 1–5: 100 points each.</li>
+      <li>Stage 6: 60 points, plus 10 for each of the five bots beaten (beating 3 passes).</li>
+      <li>Each hint: −15 points.</li>
+      <li>AI comparison with a verdict: +25 points per stage.</li>
+    </ul>
+  </section>
+
+  <section class="card notproj">
+    <h2>Debrief prompts</h2>
+    <ul>
+      <li><b>Why we still need human developers.</b> Pixel's first answer was wrong in almost every stage, even when the prompt was good. Who spotted the mistake by reading the code, and who only found it from the tests? What would have happened if you'd trusted the AI and shipped its code?</li>
+      <li><b>Confident but wrong.</b> Pixel said things like “this handles draws” and “this works for any match length” when the code didn't. Did anyone believe an explanation that turned out to be false? Where could a confident wrong answer cause real harm, for example in banking, medical or security software?</li>
+      <li><b>Specifications.</b> Who saw <code>"Win"</code> instead of <code>"win"</code>, <code>None</code> instead of <code>False</code>, or <code>"Spock"</code> instead of <code>"spock"</code>? Why does a computer care about differences a person wouldn't notice?</li>
+      <li><b>Subtle bugs.</b> In stage 3, checking <code>text in "rock paper scissors"</code> instead of a list lets empty text through. In stage 4, <code>best_of // 2</code> is out by one. Why are bugs that are one character long so easy to miss, and why do they matter most in input validation?</li>
+      <li><b>Testing.</b> Most of Pixel's wrong answers still passed most of the tests. Is passing a few tests proof that code works? Who writes tests in a real team, and when?</li>
+      <li><b>Prompting.</b> Which teams told Pixel what went wrong and got a better answer? What details made the difference? Did it ever take more than one try?</li>
+      <li><b>Maintainability.</b> How much code did you change to add lizard and Spock? Did teams that used a dictionary or list have an easier time than teams with many if statements?</li>
+      <li><b>Your own AI.</b> Your stage 6 strategy predicts the next move from past data. How is that like, and unlike, the chatbot you used?</li>
+      <li><b>Careers.</b> Developers now use and review AI-written code every day. Which skills from today, such as reading code, testing and spotting edge cases, would make you good at that job?</li>
+    </ul>
+  </section>
+
+  <section class="card notproj">
+    <h2>Troubleshooting</h2>
+    <ul class="small">
+      <li><b>“Python didn't load”.</b> The page downloads Python from <code>cdn.jsdelivr.net</code> and code blocks and the editor from <code>cdn.jsdelivr.net</code> and <code>cdnjs.cloudflare.com</code>. Ask the school's IT team to allow these, and test on the school network before the session.</li>
+      <li><b>First load is slow.</b> Python takes 5–20 seconds to start the first time. Ask teams to open the page during the brief.</li>
+      <li><b>“Ran for too long”.</b> A loop never ends. The page stops it automatically; the team needs to fix the loop.</li>
+      <li><b>Blocks look odd in Python.</b> Blockly sometimes adds <code>global</code> lines when a variable is used inside a function. This is normal and the code still works.</li>
+      <li><b>Lost progress.</b> Progress is saved in the browser on that device. Opening the page in a private window, or on a different device, starts again.</li>
+      <li><b>Starting fresh on a shared device.</b> Clear the site data for the page in the browser settings, or open it in a new private window.</li>
+      <li><b>Code not accepted.</b> Check the team name spelling. Codes are tied to the exact team name and score.</li>
+    </ul>
+  </section>
+
+  <section class="card wide notproj">
+    <h2>Model solutions</h2>
+    <p class="small muted">For helping stuck teams. Many other solutions are just as good.</p>
+    <details><summary>Stage 1: beats</summary><pre>def beats(a, b):
+    if a == "rock" and b == "scissors":
+        return True
+    if a == "scissors" and b == "paper":
+        return True
+    if a == "paper" and b == "rock":
+        return True
+    return False</pre></details>
+    <details><summary>Stage 2: round_result</summary><pre>def round_result(player, computer):
+    if player == computer:
+        return "draw"
+    elif beats(player, computer):
+        return "win"
+    else:
+        return "lose"</pre></details>
+    <details><summary>Stage 3: clean_move</summary><pre>def clean_move(text):
+    text = text.strip().lower()
+    if text == "r":
+        text = "rock"
+    elif text == "p":
+        text = "paper"
+    elif text == "s":
+        text = "scissors"
+    if text in ["rock", "paper", "scissors"]:
+        return text
+    return None</pre></details>
+    <details><summary>Stage 4: match_winner</summary><pre>def match_winner(player_score, computer_score, best_of):
+    needed = best_of // 2 + 1
+    if player_score >= needed:
+        return "player"
+    elif computer_score >= needed:
+        return "computer"
+    else:
+        return None</pre></details>
+    <details><summary>Stage 5: beats with lizard and Spock</summary><pre>def beats(a, b):
+    wins_against = {
+        "scissors": ["paper", "lizard"],
+        "paper": ["rock", "spock"],
+        "rock": ["lizard", "scissors"],
+        "lizard": ["spock", "paper"],
+        "spock": ["scissors", "rock"],
+    }
+    return b in wins_against[a]</pre></details>
+    <details><summary>Stage 6: choose_move (beats 4 of 5 bots)</summary><pre>def choose_move(history):
+    if len(history) == 0:
+        return "paper"
+    last = history[-1]
+    if last == "rock":
+        return "paper"
+    elif last == "paper":
+        return "scissors"
+    else:
+        return "rock"</pre>
+    <p class="small">For reference: always playing one move or playing randomly beats at most 2 bots, and the simulated assistant's “most common move” strategy beats 3. A strategy that predicts the opponent's next move from their last two moves can beat all five.</p></details>
+  </section>
+</main>
+
+<script>
+/* CONFIG – CODE_SECRET must match the one in index.html */
+const CONFIG = {
+  UNIVERSITY: "University of Bradford",
+  LOGO_URL: "https://uob-cs-outreach.github.io/PythonMazeGame/assets/uob-logo.png",
+  CODE_PREFIX: "GBS",
+  CODE_SECRET: "bradford-gbs-2026",
+  MINUTES: 45
+};
+const KEY="gbs-facilitator-v1";
+const $=id=>document.getElementById(id);
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+let S; try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S) S={teams:[], minutes:CONFIG.MINUTES, remaining:CONFIG.MINUTES*60, endAt:null};
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+if(CONFIG.LOGO_URL){$("logo").src=CONFIG.LOGO_URL;$("logo").alt=CONFIG.UNIVERSITY}else $("logo").remove();
+
+/* Timer */
+$("mins").value=S.minutes;
+function remaining(){return S.endAt? Math.max(0,Math.round((S.endAt-Date.now())/1000)) : S.remaining;}
+function draw(){
+  const r=remaining(), m=Math.floor(r/60), s=r%60;
+  $("clock").textContent=`${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  $("clock").classList.toggle("low", r<=300);
+  $("startBtn").textContent = S.endAt ? "Pause" : (r<S.minutes*60 && r>0 ? "Resume" : "Start");
+  if(S.endAt && r===0){ S.remaining=0; S.endAt=null; save(); }
+}
+setInterval(draw,250); draw();
+$("startBtn").onclick=()=>{ if(S.endAt){S.remaining=remaining();S.endAt=null}else if(remaining()>0){S.endAt=Date.now()+remaining()*1000} save(); draw(); };
+function adjust(sec){ if(S.endAt) S.endAt=Math.max(Date.now(), S.endAt+sec*1000); else S.remaining=Math.max(0,S.remaining+sec); save(); draw(); }
+$("plusBtn").onclick=()=>adjust(60); $("minusBtn").onclick=()=>adjust(-60);
+$("resetBtn").onclick=()=>{ S.minutes=Math.max(1,parseInt($("mins").value,10)||CONFIG.MINUTES); S.remaining=S.minutes*60; S.endAt=null; save(); draw(); };
+$("mins").onchange=()=>{ if(!S.endAt){ $("resetBtn").click(); } };
+
+/* Codes */
+function fnv(str){let h=0x811c9dc5; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0;} return h>>>0;}
+function checkCode(team, code){
+  const m=code.trim().toUpperCase().match(new RegExp("^"+CONFIG.CODE_PREFIX+"-?([0-9A-Z]{3})-?([0-9A-Z]{3})$"));
+  if(!m) return null;
+  const score=parseInt(m[1],36);
+  const chk=(fnv(CONFIG.CODE_SECRET+"|"+team.trim().toLowerCase()+"|"+score)%46656).toString(36).toUpperCase().padStart(3,"0");
+  return chk===m[2] ? score : null;
+}
+function drawBoard(){
+  const rows=[...S.teams].sort((a,b)=>b.score-a.score);
+  $("board").querySelector("tbody").innerHTML = rows.length ? rows.map((t,i)=>
+    `<tr class="${i===0?"top1":""}"><td>${i+1}</td><td>${esc(t.name)}</td><td class="num">${t.score}</td><td class="notproj"><button class="x" type="button" data-n="${esc(t.name)}" aria-label="Remove ${esc(t.name)}">✕</button></td></tr>`).join("")
+    : `<tr><td colspan="4" class="muted">No teams yet.</td></tr>`;
+  document.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{S.teams=S.teams.filter(t=>t.name!==b.dataset.n);save();drawBoard();});
+}
+drawBoard();
+$("addForm").onsubmit=e=>{
+  e.preventDefault();
+  const name=$("tName").value.trim(), code=$("tCode").value.trim();
+  const msg=$("addMsg");
+  if(!name||!code){msg.className="msg bad";msg.textContent="Enter the team name and code.";return;}
+  const score=checkCode(name,code);
+  if(score===null){msg.className="msg bad";msg.textContent="That code doesn't match that team name. Check the spelling of both.";return;}
+  const ex=S.teams.find(t=>t.name.toLowerCase()===name.toLowerCase());
+  if(ex){ex.score=score;ex.name=name}else S.teams.push({name,score});
+  save(); drawBoard();
+  msg.className="msg ok"; msg.textContent=`${name}: ${score} points added.`;
+  $("tName").value=""; $("tCode").value=""; $("tName").focus();
+};
+$("clearBtn").onclick=()=>{ if(confirm("Remove every team from the leaderboard?")){S.teams=[];save();drawBoard();} };
+$("projBtn").onclick=()=>{ document.body.classList.toggle("proj"); $("projBtn").textContent=document.body.classList.contains("proj")?"Facilitator view":"Projector view"; };
+</script>
+</body>
+</html>

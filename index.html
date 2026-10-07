@@ -1,0 +1,1681 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#081f3d">
+<meta name="description" content="Build a Rock Paper Scissors game in the browser with code blocks or Python, then compare your code with AI-written code.">
+<title>Game Build Sprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<style>
+/* Layout: ticket and game on the left, the program on the right, the AI comparison as three steps across the bottom. */
+:root{
+  --navy:#081f3d; --navy-2:#1d3f6e; --navy-soft:#e8edf5;
+  --ground:#f3f5f9; --panel:#ffffff; --ink:#15233b; --muted:#5a6679; --line:#dde3ec;
+  --pass:#13703a; --pass-soft:#e5f3ea; --fail:#b0281f; --fail-soft:#fcebe8; --hint-soft:#fff5d9; --hint-line:#efd78f;
+  --code-bg:#f6f8fb;
+  --font:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --mono:ui-monospace,"Cascadia Code",Consolas,Menlo,monospace;
+  --r-sm:6px; --r-md:10px; --gap:1.25rem;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--font);background:var(--ground);color:var(--ink);line-height:1.5;font-size:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+code,pre,textarea.code{font-family:var(--mono);font-size:.9em}
+a{color:var(--navy-2)}
+h1,h2,h3{line-height:1.25;margin:0;text-wrap:balance}
+h2{font-size:1.15rem} h3{font-size:1rem}
+p{margin:0}
+:focus-visible{outline:3px solid #5b8def;outline-offset:2px}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+.small{font-size:.9rem}
+
+/* Header */
+header.top{background:var(--navy);color:#fff;padding:.55rem 1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+header.top img{height:32px;width:auto;display:block}
+header.top .title{font-weight:700;font-size:1.1rem;padding-left:1rem;border-left:1px solid rgba(255,255,255,.25)}
+header.top .grow{flex:1}
+.meta{display:flex;align-items:center;gap:1rem;font-size:.92rem}
+.meta .team{opacity:.85}
+.meta .pts{font-weight:700;font-variant-numeric:tabular-nums}
+.pystatus{display:inline-flex;align-items:center;gap:.4rem;font-size:.85rem;opacity:.85}
+.pystatus::before{content:"";width:.55rem;height:.55rem;border-radius:50%;background:#f2c14e}
+.pystatus.ready::before{background:#5fd38d}
+.pystatus.error::before{background:#ff6b5e}
+header.top .finish{background:#fff;color:var(--navy);border:0;border-radius:var(--r-sm);padding:.4rem .85rem;font-weight:700;cursor:pointer}
+header.top .finish:hover{background:var(--navy-soft)}
+
+/* Stage stepper */
+nav.stages{background:var(--panel);border-bottom:1px solid var(--line);padding:.7rem 1.25rem;overflow-x:auto}
+nav.stages ol{list-style:none;margin:0 auto;padding:0;display:flex;gap:.4rem;max-width:1400px;min-width:max-content}
+nav.stages li{flex:1}
+nav.stages button{width:100%;white-space:nowrap;display:flex;align-items:center;gap:.5rem;border:0;background:none;padding:.35rem .5rem;border-radius:var(--r-sm);cursor:pointer;text-align:left;color:var(--muted);font-size:.9rem;border-bottom:3px solid var(--line)}
+nav.stages button .n{flex:none;display:inline-grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:50%;background:var(--line);color:var(--ink);font-weight:700;font-size:.8rem}
+nav.stages button:hover:not(:disabled){background:var(--ground)}
+nav.stages button.done{color:var(--ink);border-bottom-color:var(--pass)}
+nav.stages button.done .n{background:var(--pass);color:#fff}
+nav.stages button.current{color:var(--navy);font-weight:700;border-bottom-color:var(--navy)}
+nav.stages button.current .n{background:var(--navy);color:#fff}
+nav.stages button:disabled{cursor:not-allowed;opacity:.55}
+
+/* Page grid */
+main{max-width:1400px;margin:0 auto;padding:var(--gap) 1.25rem 3rem;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:var(--gap);align-items:start}
+@media (max-width:980px){main{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:var(--gap);min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:1.15rem 1.25rem;display:flex;flex-direction:column;gap:.85rem;min-width:0}
+.panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;flex-wrap:wrap}
+.ticket{font-size:.88rem;color:var(--muted)}
+.brief p+p{margin-top:.5rem}
+.row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+
+/* Specification */
+.spec{border-left:3px solid var(--navy-2);background:var(--code-bg);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:.75rem .9rem}
+.spec .sig{font-family:var(--mono);font-weight:700;font-size:.95rem;color:var(--navy)}
+.spec ul{margin:.45rem 0 0;padding-left:1.15rem}
+.spec li{margin:.15rem 0}
+table.ex{border-collapse:collapse;font-size:.9rem;width:100%}
+table.ex th{color:var(--muted);font-weight:400;text-align:left;padding:.2rem .5rem .3rem 0;border-bottom:1px solid var(--line)}
+table.ex td{padding:.3rem .5rem .3rem 0;border-bottom:1px solid var(--line)}
+table.ex tr:last-child td{border-bottom:0}
+table.ex code{white-space:nowrap}
+.ex-wrap{overflow-x:auto}
+
+/* Buttons */
+.btn{border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:var(--r-sm);padding:.5rem 1rem;cursor:pointer;font-weight:700}
+.btn:hover{background:var(--navy-2)}
+.btn.secondary{background:var(--panel);color:var(--navy);border-color:var(--line)}
+.btn.secondary:hover{border-color:var(--navy);background:var(--panel)}
+.btn.go{background:var(--pass);border-color:var(--pass)}
+.btn.go:hover{filter:brightness(1.1)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:.3rem .7rem;font-size:.88rem}
+.linkbtn{border:0;background:none;color:var(--navy-2);text-decoration:underline;cursor:pointer;padding:0;font-size:.9rem}
+
+/* Segmented control */
+.seg{display:inline-flex;background:var(--ground);border:1px solid var(--line);border-radius:var(--r-sm);padding:3px}
+.seg button{border:0;background:none;padding:.3rem .8rem;border-radius:4px;cursor:pointer;color:var(--muted);font-weight:700;font-size:.9rem}
+.seg button.on{background:var(--panel);color:var(--navy);box-shadow:0 1px 2px rgba(8,31,61,.12)}
+
+/* Editors – the Blockly area is isolated so its menus never sit above pop-ups */
+.editor-wrap{position:relative;isolation:isolate;z-index:0}
+#blocklyDiv{height:460px;width:100%;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+.CodeMirror{height:460px;border:1px solid var(--line);border-radius:var(--r-sm);font-size:15px;font-family:var(--mono)}
+#genPy{background:var(--code-bg);border-radius:var(--r-sm);padding:.6rem .75rem;max-height:220px;overflow:auto;font-size:.85rem;margin:.5rem 0 0;white-space:pre}
+details summary{cursor:pointer;color:var(--navy-2);font-size:.92rem}
+.actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.actions .grow{flex:1}
+
+/* Results */
+.status{border-radius:var(--r-sm);padding:.55rem .8rem;font-weight:700}
+.status.pass{background:var(--pass-soft);color:var(--pass)}
+.status.fail{background:var(--fail-soft);color:var(--fail)}
+.results{display:flex;flex-direction:column;gap:.6rem}
+.tablewrap{max-height:300px;overflow:auto}
+table.res{border-collapse:collapse;width:100%;font-size:.88rem}
+table.res th{color:var(--muted);font-weight:400;text-align:left;padding:.25rem .45rem;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
+table.res td{padding:.3rem .45rem;border-bottom:1px solid var(--line);vertical-align:top}
+table.res td.ok{color:var(--pass);font-weight:700}
+table.res td.no{color:var(--fail);font-weight:700}
+table.res tr.bad td{background:#fff8f7}
+table.res code{white-space:nowrap}
+.note{font-size:.9rem;color:var(--muted)}
+pre.out{background:#0f1b2d;color:#e6edf6;border-radius:var(--r-sm);padding:.5rem .7rem;font-size:.85rem;max-height:160px;overflow:auto;white-space:pre-wrap;margin:0}
+
+/* Hints */
+.hint{background:var(--hint-soft);border:1px solid var(--hint-line);border-radius:var(--r-sm);padding:.6rem .8rem;font-size:.93rem}
+.hint pre{background:var(--panel);padding:.45rem .55rem;border-radius:4px;overflow:auto;margin:.4rem 0 0}
+
+/* Game */
+.opts{display:flex;gap:1rem;flex-wrap:wrap;font-size:.92rem}
+.opts label{display:flex;align-items:center;gap:.4rem}
+.opts select{border:1px solid var(--line);border-radius:var(--r-sm);padding:.25rem .4rem;background:var(--panel)}
+.moves{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:.5rem}
+.moves button{border:1px solid var(--line);background:var(--panel);border-radius:var(--r-md);padding:.5rem .3rem;cursor:pointer;font-size:.9rem;display:flex;flex-direction:column;align-items:center;gap:.1rem}
+.moves button .ico{font-size:1.6rem;line-height:1.2}
+.moves button:hover{border-color:var(--navy);background:var(--navy-soft)}
+.typeform{display:flex;gap:.5rem}
+.typeform input{flex:1;min-width:0;padding:.45rem .6rem;border:1px solid var(--line);border-radius:var(--r-sm)}
+.arena{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;text-align:center;background:var(--code-bg);border-radius:var(--r-md);padding:.7rem}
+.arena .big{font-size:2.1rem;line-height:1.15;min-height:2.4rem}
+.arena .who{font-size:.85rem;color:var(--muted)}
+.arena .score{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+.gamemsg{min-height:1.5em;font-weight:700}
+.features{display:flex;flex-wrap:wrap;gap:.35rem;margin:0;padding:0;list-style:none}
+.features li{font-size:.82rem;border-radius:999px;padding:.15rem .6rem;background:var(--ground);color:var(--muted);border:1px solid var(--line)}
+.features li.on{background:var(--pass-soft);color:var(--pass);border-color:transparent}
+
+/* AI comparison */
+#aiSection{grid-column:1 / -1}
+.steps{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.35fr);gap:var(--gap)}
+@media (max-width:1150px){.steps{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .steps .step3{grid-column:1 / -1}}
+@media (max-width:760px){.steps{grid-template-columns:minmax(0,1fr)}}
+.step{display:flex;flex-direction:column;gap:.7rem;min-width:0}
+.step h3{display:flex;align-items:center;gap:.5rem}
+.step h3 .n{display:inline-grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:50%;background:var(--navy);color:#fff;font-size:.8rem}
+.step ol{margin:0;padding-left:1.2rem;font-size:.93rem}
+.step ol li{margin:.2rem 0}
+textarea.code{white-space:pre;overflow:auto;width:100%;min-height:230px;border:1px solid var(--line);border-radius:var(--r-sm);padding:.55rem;font-size:.86rem;resize:vertical;tab-size:4;background:var(--code-bg)}
+.chat{border:1px solid var(--line);border-radius:var(--r-md);background:var(--code-bg);padding:.6rem;height:320px;overflow:auto;display:flex;flex-direction:column;gap:.5rem}
+.bubble{max-width:94%;border-radius:var(--r-md);padding:.5rem .7rem;font-size:.92rem}
+.bubble.me{align-self:flex-end;background:var(--navy);color:#fff}
+.bubble.bot{align-self:flex-start;background:var(--panel);border:1px solid var(--line)}
+.bubble pre{background:var(--code-bg);border-radius:4px;padding:.4rem .5rem;overflow:auto;font-size:.8rem;margin:.4rem 0}
+.bubble .who{font-size:.8rem;font-weight:700;color:var(--muted)}
+.chatform{display:flex;gap:.5rem}
+.chatform input{flex:1;min-width:0;padding:.45rem .6rem;border:1px solid var(--line);border-radius:var(--r-sm)}
+.banner{font-size:.88rem;color:var(--muted)}
+.compare pre{background:var(--code-bg);border-radius:var(--r-sm);padding:.5rem;font-size:.8rem;overflow:auto;max-height:260px;margin:.3rem 0 0}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.75rem}
+@media (max-width:560px){.pair{grid-template-columns:minmax(0,1fr)}}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem}
+.chips label{border:1px solid var(--line);border-radius:999px;padding:.25rem .7rem;cursor:pointer;background:var(--panel);font-size:.88rem;display:inline-flex;align-items:center;gap:.35rem}
+.chips label:has(input:checked){border-color:var(--navy);background:var(--navy-soft)}
+.placeholder{background:var(--code-bg);border:1px dashed var(--line);border-radius:var(--r-md);padding:1.1rem;color:var(--muted);font-size:.93rem}
+.lockedbox{background:var(--code-bg);border-radius:var(--r-md);padding:1rem;color:var(--muted)}
+
+/* Modals (above everything, including the code-blocks menus) */
+.modal{position:fixed;inset:0;background:rgba(8,31,61,.6);display:grid;place-items:center;padding:1rem;z-index:100000}
+.modal .box{background:var(--panel);border-radius:14px;max-width:620px;width:100%;padding:1.5rem 1.6rem;max-height:92vh;overflow:auto;display:flex;flex-direction:column;gap:.9rem}
+.modal input[type=text]{width:100%;padding:.55rem .7rem;border:1px solid var(--line);border-radius:var(--r-sm);font-size:1rem;margin-top:.3rem}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.choice button{border:2px solid var(--line);background:var(--panel);border-radius:var(--r-md);padding:.8rem;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:.2rem}
+.choice button.on{border-color:var(--navy);background:var(--navy-soft)}
+.bigcode{font-size:1.8rem;font-weight:700;letter-spacing:.06em;background:var(--code-bg);border:2px dashed var(--navy);border-radius:var(--r-md);padding:.6rem;text-align:center;font-variant-numeric:tabular-nums}
+table.score{width:100%;border-collapse:collapse;font-size:.93rem}
+table.score td{padding:.35rem .4rem;border-bottom:1px solid var(--line)}
+table.score td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:.6rem 1rem;border-radius:var(--r-md);z-index:100001;box-shadow:0 6px 20px rgba(8,31,61,.25);max-width:calc(100% - 2rem)}
+@media (prefers-reduced-motion:no-preference){.toast{animation:rise .2s ease-out}@keyframes rise{from{transform:translate(-50%,8px);opacity:0}}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <img id="logo" alt="">
+  <div class="title">Game Build Sprint</div>
+  <div class="grow"></div>
+  <div class="meta">
+    <span class="pystatus" id="loading">Starting Python…</span>
+    <span class="team" id="teamPill">Team</span>
+    <span class="pts" id="scorePill">0 pts</span>
+  </div>
+  <button class="finish" id="finishBtn" type="button">Finish and get code</button>
+</header>
+
+<nav class="stages" aria-label="Stages"><ol id="stageNav"></ol></nav>
+
+<main>
+  <div class="col">
+    <section class="panel" id="briefCard" aria-live="polite"></section>
+
+    <section class="panel" id="gameCard">
+      <div class="panel-head">
+        <h2>Your game</h2>
+        <button class="linkbtn" type="button" id="resetGame">New match</button>
+      </div>
+      <p class="small muted">The game runs on the functions your team has built. Each stage you finish switches on another part.</p>
+      <ul class="features" id="lockList"></ul>
+      <div class="opts">
+        <label for="oppSel">Opponent
+          <select id="oppSel">
+            <option value="random">Random computer</option>
+            <option value="ai">Your strategy</option>
+          </select>
+        </label>
+        <label for="bestOfSel">Match
+          <select id="bestOfSel">
+            <option value="3">Best of 3</option>
+            <option value="5">Best of 5</option>
+            <option value="7">Best of 7</option>
+          </select>
+        </label>
+      </div>
+      <div class="moves" id="moveBtns"></div>
+      <form class="typeform" id="typeForm">
+        <input type="text" id="typeMove" placeholder="Or type a move, such as  R  or  Paper " aria-label="Type a move">
+        <button class="btn secondary sm" type="submit">Play</button>
+      </form>
+      <div class="arena" aria-live="polite">
+        <div><div class="who">You</div><div class="big" id="pMove">–</div><div class="score" id="pScore">0</div></div>
+        <div class="muted">vs</div>
+        <div><div class="who">Computer</div><div class="big" id="cMove">–</div><div class="score" id="cScore">0</div></div>
+      </div>
+      <div class="gamemsg" id="gameMsg" aria-live="polite">Pick a move to play.</div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="panel" id="editorCard">
+      <div class="panel-head">
+        <h2>Your program</h2>
+        <div class="seg" role="tablist" aria-label="Coding style">
+          <button type="button" id="tabBlocks" role="tab">Code blocks</button>
+          <button type="button" id="tabPy" role="tab">Python</button>
+        </div>
+      </div>
+      <p class="small muted" id="editorFn"></p>
+      <div class="editor-wrap">
+        <div id="blocksPane">
+          <div id="blocklyDiv"></div>
+          <details id="genDetails"><summary>Show the Python these blocks make</summary><pre id="genPy"></pre></details>
+        </div>
+        <div id="pyPane" class="hidden">
+          <textarea id="pyEditor"></textarea>
+          <p class="small muted" style="margin-top:.35rem">Tab indents and Shift+Tab unindents. Use four spaces for each level.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn go" type="button" id="runBtn" disabled>Run tests</button>
+        <span class="grow"></span>
+        <button class="btn secondary sm" type="button" id="convertBtn">Convert blocks to Python</button>
+        <button class="btn secondary sm" type="button" id="resetCodeBtn">Reset code</button>
+      </div>
+      <div id="results" class="results" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <section class="panel" id="aiSection">
+    <div class="panel-head">
+      <h2>Compare with AI</h2>
+      <span class="small muted" id="aiBonusNote"></span>
+    </div>
+    <p class="small muted">Ask an AI to write the same function, test its code with the same tests, and decide which version you would put in the game. AI often gets things slightly wrong, so check its work carefully.</p>
+    <div id="aiLocked" class="lockedbox hidden">Pass this stage's tests first. Then compare your code with code written by an AI.</div>
+    <div id="aiBody" class="steps">
+      <div class="step">
+        <h3><span class="n">1</span>Ask the AI</h3>
+        <div class="seg" role="tablist" aria-label="Which AI">
+          <button type="button" id="aiTabSim">Pixel (simulated)</button>
+          <button type="button" id="aiTabReal">A real chatbot</button>
+        </div>
+        <div id="aiSim">
+          <p class="banner">Pixel is a pretend AI with prepared answers, for when real chatbots aren't available. Like a real one, it answers better when your prompt is detailed, and it still makes mistakes. If its code fails, tell it what went wrong and ask again.</p>
+          <div class="chat" id="chatLog"></div>
+          <form class="chatform" id="chatForm">
+            <input type="text" id="chatInput" placeholder="Write your prompt to Pixel" aria-label="Prompt for the simulated assistant">
+            <button class="btn sm" type="submit">Send</button>
+          </form>
+        </div>
+        <div id="aiReal" class="hidden">
+          <ol>
+            <li>Open an AI chatbot in a new tab (<span id="chatbotNames"></span>).</li>
+            <li>Write your own prompt asking for this function. You can copy the specification to help.</li>
+            <li>Paste the AI's Python code into step 2.</li>
+          </ol>
+          <div><button class="btn secondary sm" type="button" id="copySpecBtn">Copy the specification</button></div>
+        </div>
+      </div>
+      <div class="step">
+        <h3><span class="n">2</span>Test its code</h3>
+        <textarea class="code" id="aiCode" spellcheck="false" wrap="off" placeholder="Paste the AI's Python code here, or press Use this code on one of Pixel's answers" aria-label="AI's code"></textarea>
+        <div><button class="btn go" type="button" id="testAiBtn">Test the AI's code</button></div>
+      </div>
+      <div class="step step3">
+        <h3><span class="n">3</span>Compare and decide</h3>
+        <div id="compareOut" class="compare"><div class="placeholder">Test the AI's code to see the two versions side by side.</div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Welcome -->
+<div class="modal hidden" id="welcome" role="dialog" aria-modal="true" aria-labelledby="wTitle">
+  <div class="box">
+    <h1 id="wTitle" style="font-size:1.5rem">Game Build Sprint</h1>
+    <p>Your team has joined the developers at a small games studio. A client wants a <b>Rock Paper Scissors</b> game, and the work has been split into six tickets.</p>
+    <p>For each ticket you write one function, run the tests, and watch that part of the game come to life. Then you ask an AI to write the same function and decide whose code is better.</p>
+    <div>
+      <label for="teamName"><b>Team name</b> <span class="small muted">(no real names, please)</span></label>
+      <input type="text" id="teamName" maxlength="24" autocomplete="off">
+    </div>
+    <div>
+      <p><b>How do you want to code?</b> <span class="small muted">You can switch at any time.</span></p>
+      <div class="choice" style="margin-top:.5rem">
+        <button type="button" id="chooseBlocks"><b>Code blocks</b><span class="small">Snap blocks together and see the Python they make.</span></button>
+        <button type="button" id="choosePy"><b>Python</b><span class="small">Type real Python code.</span></button>
+      </div>
+    </div>
+    <div class="row" style="justify-content:flex-end"><button class="btn" type="button" id="startBtn">Start the sprint</button></div>
+  </div>
+</div>
+
+<!-- Finish -->
+<div class="modal hidden" id="finish" role="dialog" aria-modal="true" aria-labelledby="fTitle">
+  <div class="box">
+    <h1 id="fTitle" style="font-size:1.4rem">Sprint report</h1>
+    <div id="finishBody" style="display:flex;flex-direction:column;gap:.8rem"></div>
+    <div class="row" style="justify-content:space-between">
+      <button class="btn secondary" type="button" id="downloadPy">Download your game (.py)</button>
+      <button class="btn" type="button" id="closeFinish">Back to the sprint</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm -->
+<div class="modal hidden" id="confirmBox" role="dialog" aria-modal="true" aria-labelledby="cText">
+  <div class="box" style="max-width:460px">
+    <p id="cText"></p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn secondary" type="button" id="cNo">Cancel</button>
+      <button class="btn" type="button" id="cYes">Continue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIG – change these for your own sessions
+   ===================================================================== */
+const CONFIG = {
+  UNIVERSITY: "University of Bradford",
+  LOGO_URL: "https://uob-cs-outreach.github.io/PythonMazeGame/assets/uob-logo.png",
+  COURSES_URL: "https://www.bradford.ac.uk/undergraduate/subjects/computing",
+  COURSES_TEXT: "Explore computing degrees at the University of Bradford",
+  CHATBOTS: "for example Microsoft Copilot, ChatGPT, Gemini or Claude, whichever your school allows",
+  CODE_PREFIX: "GBS",
+  CODE_SECRET: "bradford-gbs-2026",   // must match facilitator.html
+  STAGE_POINTS: 100,
+  HINT_COST: 15,
+  AI_BONUS: 25,
+  AI_BEFORE_PASS: false,              // true lets teams use the AI comparison before passing a stage
+  PYODIDE_URL: "https://cdn.jsdelivr.net/npm/pyodide@0.26.4/"
+};
+const STORE_KEY = "gbs-rps-v1";
+</script>
+
+<script type="text/plain" id="harnessPy">
+import io, sys, copy, random, json, time, traceback
+
+MOVES3 = ["rock", "paper", "scissors"]
+BEATS3 = {"rock": "scissors", "scissors": "paper", "paper": "rock"}
+COUNTER = {"rock": "paper", "paper": "scissors", "scissors": "rock"}
+
+TESTS = {
+    "beats": [
+        (("rock", "scissors"), True), (("scissors", "paper"), True), (("paper", "rock"), True),
+        (("scissors", "rock"), False), (("paper", "scissors"), False), (("rock", "paper"), False),
+        (("rock", "rock"), False), (("paper", "paper"), False),
+    ],
+    "round_result": [
+        (("rock", "scissors"), "win"), (("paper", "rock"), "win"), (("scissors", "paper"), "win"),
+        (("rock", "paper"), "lose"), (("scissors", "rock"), "lose"),
+        (("paper", "paper"), "draw"), (("scissors", "scissors"), "draw"),
+    ],
+    "clean_move": [
+        (("rock",), "rock"), (("Paper",), "paper"), (("SCISSORS",), "scissors"),
+        (("  rock ",), "rock"), (("r",), "rock"), (("P",), "paper"), ((" s ",), "scissors"),
+        (("banana",), None), (("",), None), (("rocks",), None), (("roc",), None),
+    ],
+    "match_winner": [
+        ((2, 0, 3), "player"), ((0, 2, 3), "computer"), ((1, 1, 3), None),
+        ((1, 0, 3), None), ((3, 2, 5), "player"), ((2, 3, 5), "computer"),
+        ((2, 1, 5), None), ((0, 0, 1), None), ((1, 0, 1), "player"),
+    ],
+}
+RULES5 = {
+    "scissors": ["paper", "lizard"], "paper": ["rock", "spock"], "rock": ["lizard", "scissors"],
+    "lizard": ["spock", "paper"], "spock": ["scissors", "rock"],
+}
+TESTS["beats5"] = [((a, b), b in RULES5[a]) for a in RULES5 for b in RULES5]
+
+def bot_rocky(theirs, mine, rnd):
+    return "rock"
+def bot_cycler(theirs, mine, rnd):
+    return MOVES3[len(mine) % 3]
+def bot_copycat(theirs, mine, rnd):
+    return theirs[-1] if theirs else "paper"
+def bot_counter(theirs, mine, rnd):
+    return COUNTER[theirs[-1]] if theirs else "scissors"
+def bot_fan(theirs, mine, rnd):
+    return "paper" if rnd.random() < 0.7 else rnd.choice(MOVES3)
+
+BOTS = [
+    ("Rocky", "Always plays rock.", bot_rocky),
+    ("Cycler", "Plays rock, paper, scissors, rock, paper, scissors…", bot_cycler),
+    ("Copycat", "Copies whatever you played last round.", bot_copycat),
+    ("Counter", "Plays whatever would have beaten your last move.", bot_counter),
+    ("Paper Fan", "Plays paper 70% of the time, otherwise a random move.", bot_fan),
+]
+ROUNDS = 60
+
+class StepLimitError(Exception):
+    pass
+
+_limit = {"steps": 0, "max": 0, "deadline": 0}
+def _tracer(frame, event, arg):
+    if event == "line" or event == "call":
+        _limit["steps"] += 1
+        if _limit["steps"] > _limit["max"] or (_limit["steps"] % 2000 == 0 and time.time() > _limit["deadline"]):
+            raise StepLimitError("your code ran for too long. Check that every loop can finish.")
+    return _tracer
+
+def _guard(fn, *a):
+    _limit["steps"] = 0
+    _limit["max"] = 3000000
+    _limit["deadline"] = time.time() + 4
+    sys.settrace(_tracer)
+    try:
+        return fn(*a)
+    finally:
+        sys.settrace(None)
+
+def run_tournament(choose_move, seed=7):
+    results = []
+    random.seed(seed)  # every team gets the same, repeatable tournament
+    for name, desc, bot in BOTS:
+        rnd = random.Random(seed + len(name))
+        theirs, mine = [], []
+        w = l = d = 0
+        error = None
+        for r in range(ROUNDS):
+            try:
+                mv = choose_move(list(mine))
+            except Exception as e:
+                error = format_error(e)
+                break
+            if mv not in MOVES3:
+                error = "choose_move returned %r, which is not 'rock', 'paper' or 'scissors'" % (mv,)
+                break
+            bm = bot(list(theirs), list(mine), rnd)
+            if BEATS3[mv] == bm: w += 1
+            elif BEATS3[bm] == mv: l += 1
+            else: d += 1
+            theirs.append(mv); mine.append(bm)
+        results.append({"bot": name, "desc": desc, "win": w, "lose": l, "draw": d,
+                        "beaten": error is None and w > l, "error": error})
+    return results
+
+def format_error(e):
+    if isinstance(e, SyntaxError) and e.filename == "<your code>":
+        return "SyntaxError (line %s): %s" % (e.lineno, e.msg)
+    line = ""
+    for fr in reversed(traceback.extract_tb(e.__traceback__)):
+        if fr.filename == "<your code>":
+            line = " (line %d)" % fr.lineno
+            break
+    return "%s%s: %s" % (type(e).__name__, line, e)
+
+def _exec_all(code, extra_code):
+    ns = {"__name__": "__student__"}
+    if extra_code:
+        exec(compile(extra_code, "<earlier stages>", "exec"), ns)
+    exec(compile(code, "<your code>", "exec"), ns)
+    return ns
+
+def run_code(code, test_key, extra_code=""):
+    out = io.StringIO()
+    old = sys.stdout
+    sys.stdout = out
+    res = {"ok": False, "error": None, "tests": [], "output": "", "tournament": None}
+    try:
+        _run_code(res, code, test_key, extra_code)
+    finally:
+        sys.stdout = old
+    res["output"] = out.getvalue()[-4000:]
+    return json.dumps(res)
+
+def _run_code(res, code, test_key, extra_code):
+        try:
+            ns = _guard(_exec_all, code, extra_code)
+        except Exception as e:
+            res["error"] = format_error(e)
+            return
+        fname = "beats" if test_key == "beats5" else test_key
+        f = ns.get(fname)
+        if not callable(f):
+            res["error"] = "Your code does not define a function called %s. Check the spelling of the def line." % fname
+            return
+        if test_key == "choose_move":
+            try:
+                t = _guard(run_tournament, f)
+            except Exception as e:
+                res["error"] = format_error(e)
+                return
+            res["tournament"] = t
+            res["ok"] = sum(1 for x in t if x["beaten"]) >= 3
+            return
+        allpass = True
+        for args, expected in TESTS[test_key]:
+            call = "%s(%s)" % (fname, ", ".join(repr(a) for a in args))
+            try:
+                got = _guard(f, *copy.deepcopy(args))
+                passed = (got == expected) and (type(got) is type(expected))
+                res["tests"].append({"call": call, "expected": repr(expected), "got": repr(got), "pass": passed})
+            except Exception as e:
+                passed = False
+                res["tests"].append({"call": call, "expected": repr(expected), "got": format_error(e), "pass": False})
+            allpass = allpass and passed
+        res["ok"] = allpass
+
+GAME = {"ns": None, "error": None}
+def load_game(code):
+    try:
+        GAME["ns"] = _guard(_exec_all, code, "")
+        GAME["error"] = None
+    except Exception as e:
+        GAME["ns"] = None
+        GAME["error"] = format_error(e)
+    return GAME["error"] or ""
+
+def game_call(name, args_json):
+    out = io.StringIO(); old = sys.stdout; sys.stdout = out
+    try:
+        f = GAME["ns"].get(name) if GAME["ns"] else None
+        if not callable(f):
+            return json.dumps({"error": "no function " + name})
+        v = _guard(f, *json.loads(args_json))
+        return json.dumps({"value": v, "output": out.getvalue()[-1000:]})
+    except Exception as e:
+        return json.dumps({"error": format_error(e)})
+    finally:
+        sys.stdout = old
+</script>
+
+<script>
+/* =====================================================================
+   Stage definitions
+   Each stage's "ai" block drives Pixel, the simulated assistant.
+   classify(prompt) picks a bucket; each bucket lists Pixel's answers in
+   the order it gives them when asked again. Most first answers contain a
+   mistake, even for good prompts, so students have to check the code.
+   ===================================================================== */
+const MOVE_ICON = {rock:"✊", paper:"✋", scissors:"✌️", lizard:"🦎", spock:"🖖"};
+
+const STAGES = [
+{
+  key:"beats", fn:"beats", test:"beats", params:["a","b"], ticket:"Ticket RPS-1", short:"Who beats who?", title:"Who beats who?",
+  brief:`<p>Every game needs rules. Write a function that says whether one move beats another.</p>
+         <p>Rock blunts scissors, scissors cut paper, and paper wraps rock.</p>`,
+  sig:"def beats(a, b):",
+  rules:["a and b are each \"rock\", \"paper\" or \"scissors\".",
+         "Return True if move a beats move b.",
+         "Return False in every other case, including when a and b are the same."],
+  examples:[["beats(\"rock\", \"scissors\")","True"],["beats(\"scissors\", \"rock\")","False"],["beats(\"paper\", \"paper\")","False"]],
+  starterPy:`def beats(a, b):
+    # Return True if move a beats move b, otherwise False
+    return False
+`,
+  starterReturn:{type:"logic_boolean",fields:{BOOL:"FALSE"}},
+  hints:[
+    `There are only three winning combinations. Check each one with <code>if</code>, and if none of them match, the answer is <code>False</code>.`,
+    `One way to start:<pre>if a == "rock" and b == "scissors":
+    return True</pre>Add the other two winning pairs, then <code>return False</code> at the end. In blocks, use the “if … return …” block from Functions.`],
+  ai:{
+    classify:p=>/false|boolean|true or false|otherwise|same|draw|both|every other|any other|else/i.test(p) ? "good":"vague",
+    attempts:{vague:["none","drawwin","correct"], good:["drawwin","correct"]},
+    variants:{
+      none:{text:"Sure! Here's a function that checks whether move a beats move b:",
+        code:`def beats(a, b):
+    if a == "rock" and b == "scissors":
+        return True
+    elif a == "scissors" and b == "paper":
+        return True
+    elif a == "paper" and b == "rock":
+        return True
+`, after:"This covers all the winning combinations, so it will work perfectly in your game. 🎮",
+        tip:"The AI's function never returns <code>False</code>. When a doesn't win it reaches the end and gives back <code>None</code>. Tell Pixel what to return in every other case, or ask it to fix the failing tests."},
+      drawwin:{text:"Here's a neat approach: if b doesn't beat a, then a must win. This handles draws too:",
+        code:`def beats(a, b):
+    # If b doesn't beat a, then a must win
+    if b == "rock" and a == "scissors":
+        return False
+    if b == "scissors" and a == "paper":
+        return False
+    if b == "paper" and a == "rock":
+        return False
+    return True
+`, after:"Every case is covered, including the same move twice. ✅",
+        tip:"The AI said this handles draws, but <code>beats(\"rock\", \"rock\")</code> gives <code>True</code>. Not losing isn't the same as winning. The AI ignored part of the specification and claimed it hadn't. Tell Pixel which test fails and ask again."},
+      correct:{text:"Sorry about that. Here's a version that only returns True for the three winning pairs:",
+        code:`def beats(a, b):
+    winning_pairs = {("rock", "scissors"), ("scissors", "paper"), ("paper", "rock")}
+    return (a, b) in winning_pairs
+`, after:"<code>(a, b) in winning_pairs</code> is already True or False, so it can be returned directly.",
+        tip:""}
+    }
+  },
+  discussion:"Pixel's first answers either returned None instead of False, or counted a draw as a win while claiming it handled draws. Both looked reasonable and both sounded confident. Only testing against the specification showed the problems. That checking is a human developer's job."
+},
+{
+  key:"round_result", fn:"round_result", test:"round_result", params:["player","computer"], deps:["beats"],
+  ticket:"Ticket RPS-2", short:"Decide the round", title:"Decide the round",
+  brief:`<p>Now use your <code>beats</code> function to decide the result of a round from the player's point of view.</p>
+         <p>Reusing a function you've already tested, instead of writing the rules again, is a key habit in software development.</p>`,
+  sig:"def round_result(player, computer):",
+  rules:["player and computer are each \"rock\", \"paper\" or \"scissors\".",
+         "Return \"win\" if player beats computer, \"lose\" if computer beats player, and \"draw\" if they are the same.",
+         "The returned words must be exactly \"win\", \"lose\" or \"draw\", in lowercase.",
+         "The function beats(a, b) already exists and can be used."],
+  examples:[["round_result(\"paper\", \"rock\")","\"win\""],["round_result(\"rock\", \"paper\")","\"lose\""],["round_result(\"rock\", \"rock\")","\"draw\""]],
+  starterPy:`def round_result(player, computer):
+    # Return "win", "lose" or "draw"
+    return "draw"
+`,
+  starterReturn:{type:"text",fields:{TEXT:"draw"}},
+  hints:[
+    `Your <code>beats</code> function does the hard part. If <code>beats(player, computer)</code> is True, the player wins. If <code>beats(computer, player)</code> is True, the player loses. Otherwise it's a draw.`,
+    `<pre>if beats(player, computer):
+    return "win"</pre>In blocks, the <b>beats</b> block is in the “My functions” category.`],
+  ai:{
+    classify:p=>/lower ?-?case|exactly|["'‘“]win["'’”]/i.test(p) ? "good":"vague",
+    attempts:{vague:["caps","swapped","correct"], good:["swapped","correct"]},
+    variants:{
+      caps:{text:"Here's a clean way to decide the round using your beats function:",
+        code:`def round_result(player, computer):
+    if beats(player, computer):
+        return "Win"
+    elif beats(computer, player):
+        return "Lose"
+    else:
+        return "Draw"
+`, after:"Nice and readable! It reuses <code>beats</code> so the rules live in one place.",
+        tip:"The logic is right, but it returns \"Win\" with a capital letter. To a computer, \"Win\" and \"win\" are different strings. Give Pixel the exact words it must return."},
+      swapped:{text:"Here you go. It returns exactly \"win\", \"lose\" or \"draw\" in lowercase, from the player's point of view:",
+        code:`def round_result(player, computer):
+    # Check the round from the player's point of view
+    if beats(computer, player):
+        return "win"
+    elif beats(player, computer):
+        return "lose"
+    return "draw"
+`, after:"This follows your specification exactly.",
+        tip:"The AI mixed up the player and the computer. When the computer wins, this code says the player won. Its comment says “from the player's point of view”, but the code does the opposite. Point out a failing test to Pixel and ask again."},
+      correct:{text:"You're right, I had the player and computer the wrong way round. Here's the fixed version:",
+        code:`def round_result(player, computer):
+    if beats(player, computer):
+        return "win"
+    elif beats(computer, player):
+        return "lose"
+    return "draw"
+`, after:"The final <code>return \"draw\"</code> only runs when neither move beats the other.", tip:""}
+    }
+  },
+  discussion:"Two typical AI slips appeared here: capital letters that break the specification, and swapping the player and the computer so the result is reversed. Both look almost right on a quick read, and the AI described its code as correct. Reading code carefully and testing it is still a human job."
+},
+{
+  key:"clean_move", fn:"clean_move", test:"clean_move", params:["text"], ticket:"Ticket RPS-3", short:"Typed moves", title:"Understand what players type",
+  brief:`<p>Players don't always type neatly. They add spaces, use capitals, or type just one letter. Write a function that tidies up what they typed, or rejects it if it isn't a move.</p>
+         <p>Checking and cleaning input is called <b>validation</b>. It stops bad data breaking your program, and it's an important part of writing secure code.</p>`,
+  sig:"def clean_move(text):",
+  rules:["text is whatever the player typed.",
+         "Ignore spaces at the start and end, and ignore capital letters.",
+         "Accept the shortcuts \"r\", \"p\" and \"s\" for rock, paper and scissors.",
+         "Return \"rock\", \"paper\" or \"scissors\" in lowercase.",
+         "Return None if the text is not a valid move."],
+  examples:[["clean_move(\"  Rock \")","\"rock\""],["clean_move(\"P\")","\"paper\""],["clean_move(\"banana\")","None"]],
+  starterPy:`def clean_move(text):
+    # Tidy up the text, then return the move or None
+    return None
+`,
+  starterReturn:{type:"rps_none"},
+  hints:[
+    `Do it in steps. First tidy the text: <code>text = text.strip().lower()</code> removes spaces from both ends and makes it lowercase. Then turn a shortcut like <code>"r"</code> into <code>"rock"</code>. Finally check whether it's a real move.`,
+    `<pre>text = text.strip().lower()
+if text == "r":
+    text = "rock"
+# ... the same for "p" and "s"
+if text in ["rock", "paper", "scissors"]:
+    return text
+return None</pre>In blocks, “trim spaces” and “to lower case” are in the Text category, and “is in list” is in Logic.`],
+  ai:{
+    classify:p=>{
+      const sp=/space|strip|whitespace|trim|tidy/i.test(p);
+      const sc=/shortcut|single letter|one letter|first letter|abbreviat|initial|["'‘“][rps]["'’”]|\br,? ?p,? ?(and|or)? ?s\b/i.test(p);
+      return sp&&sc?"good":sp?"spaces":sc?"shortcuts":"vague";},
+    attempts:{vague:["lower","spaces","substring","correct"], spaces:["spaces","substring","correct"], shortcuts:["shortcuts","substring","correct"], good:["substring","correct"]},
+    variants:{
+      lower:{text:"Here's a function that validates the player's move:",
+        code:`def clean_move(text):
+    text = text.lower()
+    if text in ["rock", "paper", "scissors"]:
+        return text
+    return None
+`, after:"It handles any messy input and rejects anything invalid by returning None. ✅",
+        tip:"Your prompt didn't mention spaces or shortcuts, so the AI didn't handle them, but it still claimed to handle “any messy input”. An AI fills gaps in a prompt with guesses."},
+      spaces:{text:"This version removes extra spaces and ignores capital letters:",
+        code:`def clean_move(text):
+    text = text.strip().lower()
+    if text in ["rock", "paper", "scissors"]:
+        return text
+    return None
+`, after:"<code>strip()</code> removes spaces from both ends of the text.",
+        tip:"The AI handled spaces, but nothing in the conversation mentioned the shortcuts r, p and s, so it left them out."},
+      shortcuts:{text:"This version accepts single-letter shortcuts too:",
+        code:`def clean_move(text):
+    shortcuts = {"r": "rock", "p": "paper", "s": "scissors"}
+    text = text.lower()
+    text = shortcuts.get(text, text)
+    if text in ["rock", "paper", "scissors"]:
+        return text
+    return None
+`, after:"<code>shortcuts.get(text, text)</code> swaps a shortcut for the full word.",
+        tip:"The AI handled shortcuts, but your prompt didn't mention spaces, so \"  rock \" fails."},
+      substring:{text:"Here's a version that strips spaces, ignores case and accepts shortcuts:",
+        code:`def clean_move(text):
+    shortcuts = {"r": "rock", "p": "paper", "s": "scissors"}
+    text = text.strip().lower()
+    text = shortcuts.get(text, text)
+    if text in "rock paper scissors":
+        return text
+    return None
+`, after:"It checks the cleaned text against the valid moves, so anything else returns None.",
+        tip:"Look at <code>if text in \"rock paper scissors\"</code>. That checks whether the text appears <i>anywhere inside</i> one long string, so an empty string and part-words like \"roc\" are accepted as moves. One character of difference from a list, and the validation has a hole in it."},
+      correct:{text:"Good catch. I was checking inside a string instead of a list. Here's the fix:",
+        code:`def clean_move(text):
+    shortcuts = {"r": "rock", "p": "paper", "s": "scissors"}
+    text = text.strip().lower()
+    text = shortcuts.get(text, text)
+    if text in ["rock", "paper", "scissors"]:
+        return text
+    return None
+`, after:"Now only the three full move names are accepted.", tip:""}
+    }
+  },
+  discussion:"Even with a detailed prompt, Pixel checked the text inside the string \"rock paper scissors\" instead of a list, which lets empty text and part-words through. Gaps in input validation are how many real security problems start. That's exactly where a human reviewer needs to look hardest."
+},
+{
+  key:"match_winner", fn:"match_winner", test:"match_winner", params:["player_score","computer_score","best_of"], ticket:"Ticket RPS-4", short:"Match winner", title:"Who wins the match?",
+  brief:`<p>Games are played as a match, such as “best of 3”. Write a function that works out whether someone has won the match yet.</p>
+         <p>In a best of 3, you need 2 wins. In a best of 5, you need 3. Draws don't count as wins.</p>`,
+  sig:"def match_winner(player_score, computer_score, best_of):",
+  rules:["player_score and computer_score are the number of rounds each has won.",
+         "best_of is an odd number such as 3, 5 or 7.",
+         "A side wins the match when it has won more than half of best_of rounds (2 wins in a best of 3, 3 wins in a best of 5).",
+         "Return \"player\" or \"computer\" if that side has won the match.",
+         "Return None if nobody has won yet."],
+  examples:[["match_winner(2, 0, 3)","\"player\""],["match_winner(1, 0, 3)","None"],["match_winner(2, 3, 5)","\"computer\""]],
+  starterPy:`def match_winner(player_score, computer_score, best_of):
+    # Return "player", "computer" or None
+    return None
+`,
+  starterReturn:{type:"rps_none"},
+  hints:[
+    `First work out how many wins are needed. For best of 3 it's 2, for best of 5 it's 3, for best of 7 it's 4. Can you find a formula using <code>best_of</code>?`,
+    `<pre>needed = best_of // 2 + 1</pre><code>//</code> divides and rounds down, so 5 // 2 is 2. Then check whether <code>player_score</code> or <code>computer_score</code> has reached <code>needed</code>. In blocks, the <b>//</b> block is in Math.`],
+  ai:{
+    classify:p=>/first to|majority|more than half|half|wins? needed|needed to win|need(s)? \d|still (going|playing|on)|not (yet )?(finished|over|won)|no ?one|nobody|none/i.test(p) ? "good":"vague",
+    attempts:{vague:["higher","hardcoded","offbyone","correct"], good:["offbyone","correct"]},
+    variants:{
+      higher:{text:"Here's a function to decide the match winner:",
+        code:`def match_winner(player_score, computer_score, best_of):
+    if player_score > computer_score:
+        return "player"
+    elif computer_score > player_score:
+        return "computer"
+    return None
+`, after:"Whoever has the higher score wins, and if the scores are level it returns None.",
+        tip:"The AI never uses best_of, so it declares a winner after a 1–0 lead. Explain when a match is actually over."},
+      hardcoded:{text:"Here's a simpler version. The first to 2 wins takes the match:",
+        code:`def match_winner(player_score, computer_score, best_of):
+    if player_score >= 2:
+        return "player"
+    if computer_score >= 2:
+        return "computer"
+    return None
+`, after:"This works for any match length.",
+        tip:"The AI hard-coded 2 wins, which is only right for a best of 3, and then claimed it works for any match length. In a best of 5 it ends the match too early."},
+      offbyone:{text:"This version works out how many wins are needed from best_of, so it works for any match length:",
+        code:`def match_winner(player_score, computer_score, best_of):
+    wins_needed = best_of // 2
+    if player_score >= wins_needed and player_score > computer_score:
+        return "player"
+    if computer_score >= wins_needed and computer_score > player_score:
+        return "computer"
+    return None
+`, after:"For a best of 5, <code>wins_needed</code> is 3.",
+        tip:"Check the AI's arithmetic: <code>5 // 2</code> is 2, not 3 as it claimed. It's out by one, so a 1–0 lead wins a best of 3. Off-by-one errors are among the most common bugs people and AI make."},
+      correct:{text:"You're right, I was out by one. More than half needs one extra win:",
+        code:`def match_winner(player_score, computer_score, best_of):
+    wins_needed = best_of // 2 + 1
+    if player_score >= wins_needed:
+        return "player"
+    if computer_score >= wins_needed:
+        return "computer"
+    return None
+`, after:"For a best of 5, <code>wins_needed</code> is 5 // 2 + 1 = 3.", tip:""}
+    }
+  },
+  discussion:"Pixel ignored best_of, hard-coded a value, or was out by one, and each time described its code as working for any match length. Notice that every wrong version still passed most of the tests. A few passing tests are not proof that code is correct, which is why developers think carefully about edge cases."
+},
+{
+  key:"beats5", fn:"beats", test:"beats5", params:["a","b"], ticket:"Ticket RPS-5", short:"Lizard and Spock", title:"Feature request: lizard and Spock",
+  brief:`<p>The client has seen your game and wants two new moves: <b>lizard</b> 🦎 and <b>Spock</b> 🖖. Update your <code>beats</code> function to handle all five moves.</p>
+         <p>Changing working code to add a feature is everyday work for developers. Code that is easy to change is called <b>maintainable</b>.</p>
+         <p class="small muted">The new rules: scissors cut paper, paper covers rock, rock crushes lizard, lizard poisons Spock, Spock smashes scissors, scissors decapitate lizard, lizard eats paper, paper disproves Spock, Spock vaporises rock, and rock blunts scissors.</p>`,
+  sig:"def beats(a, b):",
+  rules:["a and b are each \"rock\", \"paper\", \"scissors\", \"lizard\" or \"spock\", all in lowercase.",
+         "Return True if move a beats move b, otherwise False.",
+         "scissors beats paper and lizard; paper beats rock and spock; rock beats lizard and scissors; lizard beats spock and paper; spock beats scissors and rock."],
+  examples:[["beats(\"lizard\", \"spock\")","True"],["beats(\"spock\", \"rock\")","True"],["beats(\"rock\", \"spock\")","False"]],
+  starterFrom:"beats",
+  starterReturn:{type:"logic_boolean",fields:{BOOL:"FALSE"}},
+  hints:[
+    `You could add seven more <code>if</code> checks. A neater way is to store, for each move, the list of moves it beats. Then the answer is just whether <code>b</code> is in <code>a</code>'s list.`,
+    `<pre>wins_against = {
+    "rock": ["lizard", "scissors"],
+    "paper": ["rock", "spock"],
+    # ... the other three moves
+}
+return b in wins_against[a]</pre>In blocks, you can use “if a = … and b is in list …” for each move.`],
+  ai:{
+    classify:p=>{const verbs=(p.match(/cuts?|covers?|crush(es)?|poisons?|smash(es)?|decapitates?|eats?|disproves?|vapori[sz]es?|blunts?/gi)||[]).length;
+      const beatsCount=(p.match(/beats/gi)||[]).length;
+      return (verbs>=4||beatsCount>=4)?"good":"vague";},
+    attempts:{vague:["wrongrules","capital","correct"], good:["capital","correct"]},
+    variants:{
+      wrongrules:{text:"Rock Paper Scissors Lizard Spock, great choice! Here's the updated function with all the rules:",
+        code:`def beats(a, b):
+    rules = {
+        "rock": ["scissors", "spock"],
+        "paper": ["rock", "spock"],
+        "scissors": ["paper", "lizard"],
+        "lizard": ["paper", "spock"],
+        "spock": ["scissors", "lizard"],
+    }
+    return b in rules[a]
+`, after:"These are the official rules from the TV show, so they're accurate.",
+        tip:"Without the rules in your prompt, the AI wrote them from memory and confidently got some wrong: rock doesn't beat Spock, and Spock vaporises rock, not lizard. Paste the rules into your prompt."},
+      capital:{text:"Here's the updated function, using exactly the rules you gave me:",
+        code:`def beats(a, b):
+    rules = {
+        "scissors": ["paper", "lizard"],
+        "paper": ["rock", "Spock"],
+        "rock": ["lizard", "scissors"],
+        "lizard": ["Spock", "paper"],
+        "Spock": ["scissors", "rock"],
+    }
+    return b in rules[a]
+`, after:"All ten rules are included.",
+        tip:"The rules are right this time, but the AI wrote \"Spock\" with a capital S. The specification says every move is lowercase, so <code>beats(\"spock\", \"rock\")</code> crashes with a KeyError. Tell Pixel about the error and ask again."},
+      correct:{text:"Sorry, the moves should all be lowercase. Here's the corrected version:",
+        code:`def beats(a, b):
+    rules = {
+        "scissors": {"paper", "lizard"},
+        "paper": {"rock", "spock"},
+        "rock": {"lizard", "scissors"},
+        "lizard": {"spock", "paper"},
+        "spock": {"scissors", "rock"},
+    }
+    return b in rules.get(a, set())
+`, after:"<code>rules.get(a, set())</code> means an unknown move returns False instead of crashing.", tip:""}
+    }
+  },
+  discussion:"Without the rules, Pixel invented some and said they were official. With the rules, it still capitalised Spock and broke the game. Confident but wrong answers like these are often called hallucinations. Also compare how much code each team changed: a dictionary of rules needed a small edit, while a chain of if statements needed many."
+},
+{
+  key:"choose_move", fn:"choose_move", test:"choose_move", params:["history"], ticket:"Ticket RPS-6", short:"Computer opponent", title:"Build the computer opponent",
+  brief:`<p>The client wants a computer opponent that's harder to beat than a random one. Write a strategy function that chooses the computer's next move.</p>
+         <p><code>history</code> is a list of the moves the other player has made so far, oldest first, for example <code>["rock", "rock", "paper"]</code>. It's empty on the first round.</p>
+         <p>Your strategy plays 60 rounds against each of five practice bots. <b>Beat at least 3 of them</b> (win more rounds than you lose) to pass. Each bot you beat earns bonus points.</p>
+         <div class="ex-wrap"><table class="ex"><tr><th>Bot</th><th>How it plays</th></tr>
+         <tr><td>Rocky</td><td>Always plays rock.</td></tr>
+         <tr><td>Cycler</td><td>Rock, paper, scissors, rock, paper, scissors…</td></tr>
+         <tr><td>Copycat</td><td>Copies whatever you played last round.</td></tr>
+         <tr><td>Counter</td><td>Plays whatever would have beaten your last move.</td></tr>
+         <tr><td>Paper Fan</td><td>Plays paper 70% of the time.</td></tr></table></div>`,
+  sig:"def choose_move(history):",
+  rules:["history is a list of the opponent's previous moves, oldest first, for example [\"rock\", \"rock\", \"paper\"]. It is empty on the first round.",
+         "Return \"rock\", \"paper\" or \"scissors\" as the next move.",
+         "The aim is to beat opponents that follow patterns, such as always playing rock, cycling rock-paper-scissors, copying your last move, or playing whatever would have beaten your last move."],
+  examples:[["choose_move([])","\"paper\" (any move is fine)"],["choose_move([\"rock\", \"rock\"])","\"paper\" would beat another rock"]],
+  starterPy:`def choose_move(history):
+    # history is a list of the opponent's moves so far
+    return "rock"
+`,
+  starterReturn:{type:"rps_move",fields:{MOVE:"rock"}},
+  hints:[
+    `Many opponents are predictable from their <b>last</b> move. <code>history[-1]</code> is the most recent move in the list. Remember to handle the first round, when <code>history</code> is empty.`,
+    `Try playing the move that beats the opponent's last move:<pre>if len(history) == 0:
+    return "paper"
+last = history[-1]
+if last == "rock":
+    return "paper"
+# ... and so on</pre>In blocks, “length of” and “in list get last” are in the Lists category.`],
+  ai:{
+    classify:p=>/pattern|predict|most (common|often|frequent)|frequen|count|(last|previous|recent) moves?|counter|copies|copycat|cycl|always plays?|bots?\b/i.test(p) ? "good":"vague",
+    attempts:{vague:["random","alwayspaper","backwards","correct"], good:["backwards","correct"]},
+    variants:{
+      random:{text:"The best strategy in Rock Paper Scissors is to be unpredictable, so here's a random choice:",
+        code:`import random
+
+def choose_move(history):
+    return random.choice(["rock", "paper", "scissors"])
+`, after:"Game theory says a random strategy can't be beaten, so this is the optimal approach. 🎲",
+        tip:"Random play can't be exploited, but it can't exploit anyone either, so it only beats bots by luck. The AI answered a different question (how not to lose) from the one you asked (how to beat predictable bots). Describe the bots in your prompt."},
+      alwayspaper:{text:"Studies show most people open with rock, so paper is the strongest move:",
+        code:`def choose_move(history):
+    # Most people open with rock, so paper is the best move
+    return "paper"
+`, after:"Simple and effective!",
+        tip:"The AI applied a fact about humans to bots that don't behave like humans. Playing paper every time is easy for Counter to beat. Describe the bots in your prompt."},
+      backwards:{text:"Here's a strategy that finds the opponent's most common move and plays whatever beats it:",
+        code:`from collections import Counter
+
+def choose_move(history):
+    if not history:
+        return "paper"
+    most_common = Counter(history).most_common(1)[0][0]
+    # Play the move that beats their favourite move
+    counters = {"rock": "scissors", "paper": "rock", "scissors": "paper"}
+    return counters[most_common]
+`, after:"This adapts as the game goes on, so it will beat opponents that favour one move.",
+        tip:"Check the AI's <code>counters</code> dictionary: scissors doesn't beat rock, it loses to it. The idea and the comment are right, but the code plays the move that <i>loses</i> to the opponent's favourite. Tell Pixel it lost to Rocky and ask again."},
+      correct:{text:"Oops, my dictionary was backwards. Here's the fix:",
+        code:`from collections import Counter
+
+def choose_move(history):
+    if not history:
+        return "paper"
+    most_common = Counter(history).most_common(1)[0][0]
+    counters = {"rock": "paper", "paper": "scissors", "scissors": "rock"}
+    return counters[most_common]
+`, after:"Now it plays the move that beats their favourite.", tip:""}
+    }
+  },
+  discussion:"Pixel's strategies sounded convincing, but one was backwards: its comment said one thing and its code did the opposite. AI-written comments and explanations can be wrong too, so developers judge code by what it actually does, using tests like this tournament. Your own strategy is a small piece of artificial intelligence: it predicts the next move from past data."
+}
+];
+function specText(s){ return s.sig + "\n" + s.rules.map(r=>"    "+r).join("\n"); }
+
+/* =====================================================================
+   State
+   ===================================================================== */
+let state = loadState();
+function freshState(){
+  return {team:"", mode:"blocks", current:0, started:false,
+    stages: STAGES.map(()=>({passed:false, hints:0, py:null, blocks:null, aiBonus:false, aiCode:"", botsBeaten:0, lastMode:null}))};
+}
+function loadState(){
+  try{const s=JSON.parse(localStorage.getItem(STORE_KEY)); if(s&&s.stages&&s.stages.length===STAGES.length) return s;}catch(e){}
+  return freshState();
+}
+function saveState(){try{localStorage.setItem(STORE_KEY, JSON.stringify(state));}catch(e){}}
+
+function stagePoints(i){
+  const st=state.stages[i]; let p=0;
+  if(st.passed){
+    p = STAGES[i].key==="choose_move" ? 60 + 10*st.botsBeaten : CONFIG.STAGE_POINTS;
+    p -= st.hints*CONFIG.HINT_COST;
+  }
+  if(st.aiBonus) p += CONFIG.AI_BONUS;
+  return Math.max(0,p);
+}
+function totalScore(){return STAGES.reduce((t,_,i)=>t+stagePoints(i),0);}
+function unlocked(i){return i===0 || state.stages[i-1].passed;}
+
+/* =====================================================================
+   Python (Pyodide)
+   ===================================================================== */
+let py = null;
+const loadingEl = document.getElementById("loading");
+async function startPython(){
+  try{
+    await loadScript(CONFIG.PYODIDE_URL+"pyodide.js");
+    py = await loadPyodide({indexURL: CONFIG.PYODIDE_URL});
+    py.runPython(document.getElementById("harnessPy").textContent);
+    loadingEl.textContent = "Python ready";
+    loadingEl.classList.add("ready");
+    document.getElementById("runBtn").disabled = false;
+    refreshGame();
+  }catch(e){
+    console.error(e);
+    loadingEl.textContent = "Python didn't load";
+    loadingEl.classList.add("error");
+    document.getElementById("results").innerHTML = `<div class="status fail">Python couldn't be loaded. Check the internet connection and reload the page. If the school network blocks cdn.jsdelivr.net, ask IT to allow it.</div>`;
+  }
+}
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=()=>rej(new Error("load "+src));document.head.appendChild(s);});}
+
+function pyRun(code, testKey, extra){
+  const f = py.globals.get("run_code");
+  const out = f(code, testKey, extra||"");
+  f.destroy();
+  return JSON.parse(out);
+}
+
+/* Code from earlier stages that a stage depends on */
+function solvedCode(key){
+  if(key==="beats"){
+    const s5 = STAGES.findIndex(s=>s.key==="beats5");
+    if(state.stages[s5].passed) return state.stages[s5].py;
+    return state.stages[0].passed ? state.stages[0].py : "";
+  }
+  const i = STAGES.findIndex(s=>s.key===key);
+  return state.stages[i].passed ? state.stages[i].py : "";
+}
+function depsCode(stage){return (stage.deps||[]).map(solvedCode).filter(Boolean).join("\n\n");}
+
+/* =====================================================================
+   Blockly
+   ===================================================================== */
+let ws=null, pyGen=null, Order=null, cm=null;
+function initBlockly(){
+  pyGen = (window.python && python.pythonGenerator) || Blockly.Python;
+  Order = (window.python && python.Order) || {ATOMIC:0,FUNCTION_CALL:2,RELATIONAL:11,NONE:99};
+  // No "Describe this function..." comment on function blocks
+  Blockly.Msg.PROCEDURES_DEFRETURN_COMMENT = "";
+  Blockly.Msg.PROCEDURES_DEFNORETURN_COMMENT = "";
+
+  Blockly.defineBlocksWithJsonArray([
+    {type:"rps_move", message0:"%1", args0:[{type:"field_dropdown",name:"MOVE",options:[["✊ rock","rock"],["✋ paper","paper"],["✌️ scissors","scissors"],["🦎 lizard","lizard"],["🖖 spock","spock"]]}], output:"String", colour:160, tooltip:"A move, as text"},
+    {type:"rps_none", message0:"None", output:null, colour:210, tooltip:"Python's None value, meaning 'nothing'"},
+    {type:"rps_in_list", message0:"%1 is in list %2", args0:[{type:"input_value",name:"ITEM"},{type:"input_value",name:"LIST"}], inputsInline:true, output:"Boolean", colour:210, tooltip:"True if the item is one of the values in the list"},
+    {type:"rps_call_beats", message0:"beats ( %1 , %2 )", args0:[{type:"input_value",name:"A"},{type:"input_value",name:"B"}], inputsInline:true, output:"Boolean", colour:20, tooltip:"Your beats function from stage 1"},
+    {type:"rps_floordiv", message0:"%1 // %2", args0:[{type:"input_value",name:"A",check:"Number"},{type:"input_value",name:"B",check:"Number"}], inputsInline:true, output:"Number", colour:230, tooltip:"Divide and round down, e.g. 5 // 2 is 2"}
+  ]);
+  const fb = pyGen.forBlock || pyGen;
+  fb["rps_move"] = b => ["'"+b.getFieldValue("MOVE")+"'", Order.ATOMIC];
+  fb["rps_none"] = b => ["None", Order.ATOMIC];
+  fb["rps_in_list"] = (b,g) => {g=g||pyGen;
+    return [(g.valueToCode(b,"ITEM",Order.RELATIONAL)||"None")+" in "+(g.valueToCode(b,"LIST",Order.RELATIONAL)||"[]"), Order.RELATIONAL];};
+  fb["rps_call_beats"] = (b,g) => {g=g||pyGen;
+    return ["beats("+(g.valueToCode(b,"A",Order.NONE)||"None")+", "+(g.valueToCode(b,"B",Order.NONE)||"None")+")", Order.FUNCTION_CALL];};
+  fb["rps_floordiv"] = (b,g) => {g=g||pyGen; const M=Order.MULTIPLICATIVE||5;
+    return [(g.valueToCode(b,"A",M)||"0")+" // "+(g.valueToCode(b,"B",M)||"1"), M];};
+
+  ws = Blockly.inject("blocklyDiv", {
+    toolbox: buildToolbox(STAGES[state.current]),
+    trashcan:true, scrollbars:true, sounds:false,
+    zoom:{controls:true, wheel:true, startScale:0.9},
+    grid:{spacing:24,length:2,colour:"#e5e9f0",snap:true},
+    move:{scrollbars:true,drag:true,wheel:false}
+  });
+  ws.addChangeListener(e=>{
+    if(e.isUiEvent) return;
+    updateGenPy();
+    if(state.mode==="blocks" && !loadingStage){ state.stages[state.current].blocks = Blockly.serialization.workspaces.save(ws); saveState(); }
+  });
+}
+function buildToolbox(stage){
+  const cats = [
+    {kind:"category",name:"Logic",colour:"210",contents:[
+      {kind:"block",type:"controls_if"},
+      {kind:"block",type:"controls_if",extraState:{hasElse:true}},
+      {kind:"block",type:"controls_if",extraState:{elseIfCount:1,hasElse:true}},
+      {kind:"block",type:"logic_compare"},{kind:"block",type:"logic_operation"},{kind:"block",type:"logic_negate"},
+      {kind:"block",type:"logic_boolean"},{kind:"block",type:"rps_none"},{kind:"block",type:"rps_in_list"}]},
+    {kind:"category",name:"Moves",colour:"160",contents:[
+      {kind:"block",type:"rps_move"},
+      {kind:"block",type:"rps_move",fields:{MOVE:"paper"}},
+      {kind:"block",type:"rps_move",fields:{MOVE:"scissors"}}]},
+    {kind:"category",name:"Text",colour:"160",contents:[
+      {kind:"block",type:"text"},
+      {kind:"block",type:"text_trim",fields:{MODE:"BOTH"}},
+      {kind:"block",type:"text_changeCase",fields:{CASE:"LOWERCASE"}},
+      {kind:"block",type:"text_isEmpty"},{kind:"block",type:"text_length"},{kind:"block",type:"text_print"}]},
+    {kind:"category",name:"Math",colour:"230",contents:[
+      {kind:"block",type:"math_number"},{kind:"block",type:"math_arithmetic"},{kind:"block",type:"rps_floordiv"},
+      {kind:"block",type:"math_round"},{kind:"block",type:"math_random_int"}]},
+    {kind:"category",name:"Lists",colour:"260",contents:[
+      {kind:"block",type:"lists_create_with"},{kind:"block",type:"lists_length"},{kind:"block",type:"lists_isEmpty"},
+      {kind:"block",type:"lists_getIndex",fields:{MODE:"GET",WHERE:"LAST"}},
+      {kind:"block",type:"lists_getIndex",fields:{MODE:"GET",WHERE:"RANDOM"}},
+      {kind:"block",type:"lists_getIndex"}]},
+    {kind:"category",name:"Loops",colour:"120",contents:[
+      {kind:"block",type:"controls_forEach"},{kind:"block",type:"controls_repeat_ext"},{kind:"block",type:"controls_whileUntil"}]},
+    {kind:"category",name:"Variables",colour:"330",custom:"VARIABLE"},
+    {kind:"category",name:"Functions",colour:"290",contents:[
+      {kind:"block",type:"procedures_ifreturn"}]}
+  ];
+  if(stage.key==="beats5"||stage.key==="choose_move"){
+    cats[1].contents.push({kind:"block",type:"rps_move",fields:{MOVE:"lizard"}},{kind:"block",type:"rps_move",fields:{MOVE:"spock"}});
+  }
+  if(stage.deps&&stage.deps.includes("beats")){
+    cats.push({kind:"category",name:"My functions",colour:"20",contents:[{kind:"block",type:"rps_call_beats"}]});
+  }
+  return {kind:"categoryToolbox",contents:cats};
+}
+function starterBlocks(stage){
+  const vars = stage.params.map(p=>({name:p,id:"v_"+p}));
+  return {
+    blocks:{languageVersion:0,blocks:[{
+      type:"procedures_defreturn", x:30, y:30, deletable:false,
+      fields:{NAME:stage.fn},
+      extraState:{params:stage.params.map(p=>({name:p,id:"v_"+p}))},
+      inputs:{RETURN:{block:JSON.parse(JSON.stringify(stage.starterReturn))}}
+    }]},
+    variables:vars
+  };
+}
+function blocksToPython(){
+  if(!ws) return "";
+  let code = pyGen.workspaceToCode(ws);
+  // Blockly adds "x = None" lines for every variable; parameters don't need them.
+  const params = STAGES[state.current].params;
+  code = code.split("\n").filter(l=>!params.some(p=>l===p+" = None") && l.trim()!=="# Describe this function...").join("\n");
+  return code.replace(/^\n+/,"");
+}
+function updateGenPy(){document.getElementById("genPy").textContent = blocksToPython() || "(no blocks yet)";}
+function hideBlocklyMenus(){ try{ if(window.Blockly && Blockly.hideChaff) Blockly.hideChaff(); }catch(e){} }
+
+/* =====================================================================
+   Python editor
+   ===================================================================== */
+function initEditor(){
+  cm = CodeMirror.fromTextArea(document.getElementById("pyEditor"), {
+    mode:"python", lineNumbers:true, indentUnit:4, tabSize:4, indentWithTabs:false, matchBrackets:true,
+    extraKeys:{
+      Tab: c => { if(c.somethingSelected()) c.indentSelection("add"); else c.replaceSelection("    ","end"); },
+      "Shift-Tab": c => c.indentSelection("subtract")
+    }
+  });
+  cm.on("change", ()=>{ if(!loadingStage){ state.stages[state.current].py_draft = cm.getValue(); saveState(); }});
+}
+
+/* =====================================================================
+   Modals
+   ===================================================================== */
+function openModal(id){ hideBlocklyMenus(); $(id).classList.remove("hidden"); }
+function closeModal(id){ $(id).classList.add("hidden"); }
+function askConfirm(text, yesLabel){
+  return new Promise(res=>{
+    $("cText").textContent=text; $("cYes").textContent=yesLabel||"Continue";
+    openModal("confirmBox");
+    const done=v=>{closeModal("confirmBox"); $("cYes").onclick=$("cNo").onclick=null; res(v);};
+    $("cYes").onclick=()=>done(true); $("cNo").onclick=()=>done(false);
+    setTimeout(()=>$("cNo").focus(),20);
+  });
+}
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+let loadingStage=false;
+const $ = id => document.getElementById(id);
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+function renderNav(){
+  const nav=$("stageNav"); nav.innerHTML="";
+  STAGES.forEach((s,i)=>{
+    const li=document.createElement("li");
+    const b=document.createElement("button"); b.type="button";
+    const st=state.stages[i];
+    b.className=(st.passed?"done ":"")+(i===state.current?"current":"");
+    b.innerHTML=`<span class="n">${st.passed?"✓":i+1}</span><span>${esc(s.short||s.title)}</span>`;
+    b.title = unlocked(i)? s.ticket : "Finish the previous stage to unlock this one";
+    b.disabled = !unlocked(i);
+    if(i===state.current) b.setAttribute("aria-current","step");
+    b.onclick=()=>gotoStage(i);
+    li.appendChild(b); nav.appendChild(li);
+  });
+  $("scorePill").textContent = totalScore()+" pts";
+  $("teamPill").textContent = state.team || "Team";
+}
+
+function renderBrief(){
+  const s=STAGES[state.current], st=state.stages[state.current];
+  let html = `<div><p class="ticket">${esc(s.ticket)}, stage ${state.current+1} of ${STAGES.length}</p>
+    <h2 style="font-size:1.3rem;margin-top:.15rem">${esc(s.title)}</h2></div>
+    <div class="brief">${s.brief}</div>
+    <div class="spec"><div class="sig">${esc(s.sig)}</div><ul>${s.rules.map(r=>`<li>${esc(r)}</li>`).join("")}</ul></div>`;
+  html += `<div class="ex-wrap"><table class="ex"><tr><th>Example call</th><th>Should give</th></tr>`+
+      s.examples.map(e=>`<tr><td><code>${esc(e[0])}</code></td><td><code>${esc(e[1])}</code></td></tr>`).join("")+`</table></div>`;
+  for(let h=0; h<st.hints; h++) html += `<div class="hint"><b>Hint ${h+1}.</b> ${s.hints[h]}</div>`;
+  if(st.passed) html += `<div class="status pass">Stage complete: ${stagePoints(state.current)} pts${st.aiBonus?"":`. Earn ${CONFIG.AI_BONUS} more by comparing with AI below.`}</div>`;
+  else if(st.hints < s.hints.length) html += `<div><button class="btn secondary sm" type="button" id="hintBtn">Show hint ${st.hints+1} (−${CONFIG.HINT_COST} pts)</button></div>`;
+  $("briefCard").innerHTML = html;
+  const hb=$("hintBtn"); if(hb) hb.onclick=()=>{st.hints++; saveState(); renderBrief(); renderNav();};
+}
+
+function setMode(mode){
+  state.mode = mode; saveState();
+  $("tabBlocks").classList.toggle("on", mode==="blocks");
+  $("tabPy").classList.toggle("on", mode==="python");
+  $("tabBlocks").setAttribute("aria-selected", mode==="blocks");
+  $("tabPy").setAttribute("aria-selected", mode==="python");
+  $("blocksPane").classList.toggle("hidden", mode!=="blocks");
+  $("pyPane").classList.toggle("hidden", mode!=="python");
+  $("convertBtn").classList.toggle("hidden", mode!=="blocks");
+  if(mode==="blocks" && ws) setTimeout(()=>Blockly.svgResize(ws),0); else hideBlocklyMenus();
+  if(mode==="python" && cm) setTimeout(()=>cm.refresh(),0);
+}
+
+function starterPython(s){
+  if(s.starterFrom){ const prev=solvedCode(s.starterFrom); if(prev) return prev; }
+  return s.starterPy;
+}
+
+function loadStageEditors(){
+  loadingStage = true;
+  const s=STAGES[state.current], st=state.stages[state.current];
+  $("editorFn").innerHTML = `Write the function <code>${esc(s.sig.replace(/:$/,""))}</code>`;
+  if(ws){
+    ws.updateToolbox(buildToolbox(s));
+    ws.clear();
+    let data = st.blocks;
+    if(!data && s.starterFrom){ const prevIdx = STAGES.findIndex(x=>x.key===s.starterFrom); data = state.stages[prevIdx].blocks; }
+    try{ Blockly.serialization.workspaces.load(data || starterBlocks(s), ws); }
+    catch(e){ console.warn(e); Blockly.serialization.workspaces.load(starterBlocks(s), ws); }
+    updateGenPy();
+  }
+  if(cm){ cm.setValue(st.py_draft || st.py || starterPython(s)); cm.clearHistory(); }
+  loadingStage = false;
+  $("results").innerHTML = "";
+}
+
+function gotoStage(i){
+  if(!unlocked(i)) return;
+  hideBlocklyMenus();
+  state.current=i; saveState();
+  renderNav(); renderBrief(); loadStageEditors(); renderAI(); renderGameLocks();
+}
+
+/* =====================================================================
+   Running tests
+   ===================================================================== */
+function currentCode(){ return state.mode==="blocks" ? blocksToPython() : cm.getValue(); }
+
+function runTests(){
+  if(!py) return;
+  const i=state.current, s=STAGES[i], st=state.stages[i];
+  const code=currentCode();
+  if(!code.trim()){ $("results").innerHTML=`<div class="status fail">There's no code to run yet.</div>`; return; }
+  const res = pyRun(code, s.test, depsCode(s));
+  $("results").innerHTML = renderResults(res, false);
+  if(res.ok){
+    const first = !st.passed;
+    st.passed = true; st.py = code; st.lastMode = state.mode;
+    if(s.key==="choose_move") st.botsBeaten = Math.max(st.botsBeaten, res.tournament.filter(t=>t.beaten).length);
+    saveState(); renderNav(); renderBrief(); renderAI(); refreshGame();
+    if(first) toast(i<STAGES.length-1 ? `Stage ${i+1} done. Try the new part of your game and compare with AI, then move on.` : "Final stage done. Press “Finish and get code” when you're ready.");
+  }
+}
+
+function testTable(rows){
+  return `<div class="tablewrap"><table class="res"><tr><th></th><th>Test</th><th>Expected</th><th>Got</th></tr>`+
+    rows.map(t=>`<tr class="${t.pass?"":"bad"}"><td class="${t.pass?"ok":"no"}">${t.pass?"✓":"✗"}</td><td><code>${esc(t.call)}</code></td><td><code>${esc(t.expected)}</code></td><td><code>${esc(t.got)}</code></td></tr>`).join("")+`</table></div>`;
+}
+function renderResults(res, isAI){
+  let h="";
+  if(res.error){
+    h += `<div class="status fail">${esc(res.error)}</div>`;
+    if(/StepLimit/.test(res.error)) h += `<p class="note">A loop is probably repeating forever. Make sure the loop condition eventually becomes False.</p>`;
+    else if(/Syntax|Indentation/.test(res.error)) h += `<p class="note">Check spelling, brackets, the colon at the end of <code>def</code>, <code>if</code> and <code>else</code> lines, and four-space indentation.</p>`;
+  } else if(res.tournament){
+    const beaten = res.tournament.filter(t=>t.beaten).length;
+    h += `<div class="status ${res.ok?"pass":"fail"}">${isAI?"The AI's strategy":"Your strategy"} beat ${beaten} of ${res.tournament.length} bots${res.ok?(isAI?".":". Stage passed!"):". Beat at least 3 to pass."}</div>`;
+    h += `<div class="tablewrap"><table class="res"><tr><th></th><th>Bot</th><th>Won</th><th>Lost</th><th>Drawn</th></tr>`+
+      res.tournament.map(t=>`<tr class="${t.beaten?"":"bad"}"><td class="${t.beaten?"ok":"no"}">${t.beaten?"✓":"✗"}</td><td>${esc(t.bot)}</td><td>${t.win}</td><td>${t.lose}</td><td>${t.draw}</td></tr>`+
+        (t.error?`<tr class="bad"><td></td><td colspan="4">${esc(t.error)}</td></tr>`:"")).join("")+`</table></div>`;
+  } else {
+    const n=res.tests.length, fails=res.tests.filter(t=>!t.pass);
+    h += `<div class="status ${res.ok?"pass":"fail"}">${n-fails.length} of ${n} tests passed${res.ok&&!isAI?". Stage passed!":""}</div>`;
+    if(fails.length){
+      h += testTable(fails);
+      h += `<details><summary>Show all ${n} tests</summary>${testTable(res.tests)}</details>`;
+      const typeIssue = fails.find(t=>t.got.toLowerCase()===t.expected.toLowerCase() && t.got!==t.expected);
+      if(typeIssue) h += `<p class="note">Look closely at <code>${esc(typeIssue.got)}</code> and <code>${esc(typeIssue.expected)}</code>. Capital letters and quote marks matter.</p>`;
+      if(fails.some(t=>t.got==="None" && t.expected!=="None")) h += `<p class="note"><code>None</code> means the function finished without reaching a <code>return</code>.</p>`;
+    } else {
+      h += `<details><summary>Show all ${n} tests</summary>${testTable(res.tests)}</details>`;
+    }
+  }
+  if(res.output) h += `<div><div class="note">Printed output</div><pre class="out">${esc(res.output)}</pre></div>`;
+  return h;
+}
+
+/* =====================================================================
+   Game
+   ===================================================================== */
+const game = {p:0, c:0, history:[], over:false};
+let gameReady=false;
+function gameProgram(){
+  const parts=[];
+  const b=solvedCode("beats"); if(b) parts.push(b);
+  ["round_result","clean_move","match_winner","choose_move"].forEach(k=>{const c=solvedCode(k); if(c) parts.push(c);});
+  return parts.join("\n\n");
+}
+function refreshGame(){
+  renderGameLocks(); renderMoveButtons();
+  if(!py) return;
+  const f=py.globals.get("load_game"); const err=f(gameProgram()); f.destroy();
+  gameReady = !err;
+  if(err) $("gameMsg").textContent = "Your game code has an error: "+err;
+}
+function passedKey(k){ const i=STAGES.findIndex(s=>s.key===k); return state.stages[i].passed; }
+function gcall(name,args){
+  const f=py.globals.get("game_call"); const r=JSON.parse(f(name, JSON.stringify(args))); f.destroy(); return r;
+}
+function availableMoves(){ return passedKey("beats5") ? ["rock","paper","scissors","lizard","spock"] : ["rock","paper","scissors"]; }
+function renderMoveButtons(){
+  const box=$("moveBtns"); box.innerHTML="";
+  availableMoves().forEach(m=>{
+    const b=document.createElement("button"); b.type="button";
+    b.innerHTML=`<span class="ico" aria-hidden="true">${MOVE_ICON[m]}</span>${m==="spock"?"Spock":m[0].toUpperCase()+m.slice(1)}`;
+    b.onclick=()=>playRound(m); box.appendChild(b);
+  });
+}
+function renderGameLocks(){
+  const items=[
+    ["beats","Rules"],["round_result","Round results"],["clean_move","Typed moves"],
+    ["match_winner","Matches"],["beats5","Lizard and Spock"],["choose_move","Your strategy"]];
+  $("lockList").innerHTML = items.map(([k,t],i)=>`<li class="${passedKey(k)?"on":""}" title="${passedKey(k)?"Switched on":"Finish stage "+(i+1)+" to switch this on"}">${passedKey(k)?"✓ ":""}${t}</li>`).join("");
+  $("oppSel").options[1].disabled = !passedKey("choose_move");
+  $("oppSel").options[1].textContent = passedKey("choose_move") ? "Your strategy" : "Your strategy (stage 6)";
+  if(!passedKey("choose_move")) $("oppSel").value="random";
+}
+function resetMatch(msg){
+  game.p=0; game.c=0; game.history=[]; game.over=false;
+  $("pScore").textContent="0"; $("cScore").textContent="0"; $("pMove").textContent="–"; $("cMove").textContent="–";
+  $("gameMsg").textContent = msg || "New match. Pick a move.";
+}
+function playRound(move){
+  if(!py){ $("gameMsg").textContent="Python is still loading…"; return; }
+  if(!gameReady){ refreshGame(); if(!gameReady) return; }
+  if(game.over) resetMatch();
+  const moves=availableMoves();
+  let comp = moves[Math.floor(Math.random()*moves.length)];
+  if($("oppSel").value==="ai" && passedKey("choose_move")){
+    const r=gcall("choose_move",[game.history.slice()]);
+    if(r.error){ $("gameMsg").textContent="Your strategy crashed: "+r.error; return; }
+    if(!moves.includes(r.value)){ $("gameMsg").textContent=`Your strategy returned ${JSON.stringify(r.value)}, which isn't a move.`; return; }
+    comp = r.value;
+  }
+  $("pMove").textContent=MOVE_ICON[move]; $("cMove").textContent=MOVE_ICON[comp];
+  game.history.push(move);
+  if(!passedKey("round_result")){
+    $("gameMsg").textContent = passedKey("beats") ? `You played ${move} and the computer played ${comp}. Finish stage 2 so the game can decide who won.` : `You played ${move} and the computer played ${comp}. The game doesn't know the rules yet. Finish stage 1.`;
+    return;
+  }
+  const r=gcall("round_result",[move,comp]);
+  if(r.error){ $("gameMsg").textContent="round_result crashed: "+r.error; return; }
+  let msg = r.value==="win" ? "You win the round!" : r.value==="lose" ? "The computer wins the round." : r.value==="draw" ? "It's a draw." : `round_result gave ${JSON.stringify(r.value)}…`;
+  if(r.value==="win") game.p++; if(r.value==="lose") game.c++;
+  $("pScore").textContent=game.p; $("cScore").textContent=game.c;
+  if(passedKey("match_winner")){
+    const bo=parseInt($("bestOfSel").value,10);
+    const w=gcall("match_winner",[game.p,game.c,bo]);
+    if(w.error) msg += " (match_winner crashed: "+w.error+")";
+    else if(w.value==="player"){ msg += ` 🏆 You win the best of ${bo}!`; game.over=true; }
+    else if(w.value==="computer"){ msg += ` The computer wins the best of ${bo}.`; game.over=true; }
+  }
+  $("gameMsg").textContent = msg;
+}
+$("typeForm").onsubmit = e => {
+  e.preventDefault();
+  const raw=$("typeMove").value;
+  if(!py) return;
+  if(!gameReady){ refreshGame(); if(!gameReady) return; }
+  let mv=null;
+  if(passedKey("clean_move")){
+    const r=gcall("clean_move",[raw]);
+    if(r.error){ $("gameMsg").textContent="clean_move crashed: "+r.error; return; }
+    mv=r.value;
+    if(passedKey("beats5") && !mv){ const t=raw.trim().toLowerCase(); if(t==="lizard"||t==="spock") mv=t; }
+    if(!mv){ $("gameMsg").textContent=`Your clean_move function says “${raw}” isn't a move.`; return; }
+  } else {
+    if(availableMoves().includes(raw)) mv=raw;
+    else { $("gameMsg").textContent=`The game only understands exactly "rock", "paper" or "scissors" until you finish stage 3.`; return; }
+  }
+  $("typeMove").value="";
+  playRound(mv);
+};
+$("resetGame").onclick=()=>resetMatch();
+$("bestOfSel").onchange=()=>resetMatch();
+$("oppSel").onchange=()=>resetMatch($("oppSel").value==="ai"?"You're now playing against your own strategy. Can you beat it?":"New match against a random computer.");
+
+/* =====================================================================
+   AI comparison
+   ===================================================================== */
+const REFLECT_CHIPS = ["The AI missed an edge case","The AI didn't follow the specification exactly","The AI's comment or explanation was wrong","The AI was confident but wrong","The AI used Python we hadn't seen","The AI's code is shorter or neater","Our code is easier to understand","Both versions behave the same"];
+const FIX_WORDS = /wrong|bug|error|fix|fail|mistake|incorrect|broken|doesn'?t work|isn'?t right|not right|crash|again|try again|lost/i;
+let lastAIvariant=null, simChat=[], simIndex={};
+
+function renderAI(){
+  const i=state.current, st=state.stages[i];
+  const canUse = st.passed || CONFIG.AI_BEFORE_PASS;
+  $("aiLocked").classList.toggle("hidden", canUse);
+  $("aiBody").classList.toggle("hidden", !canUse);
+  $("aiBonusNote").textContent = st.aiBonus ? `Bonus earned: +${CONFIG.AI_BONUS} pts` : `+${CONFIG.AI_BONUS} pts bonus for this stage`;
+  $("aiCode").value = st.aiCode || "";
+  $("compareOut").innerHTML = `<div class="placeholder">Test the AI's code to see the two versions side by side.</div>`;
+  lastAIvariant=null; simChat=[]; simIndex={}; renderChat();
+}
+function setAiTab(t){
+  $("aiTabReal").classList.toggle("on",t==="real"); $("aiTabSim").classList.toggle("on",t==="sim");
+  $("aiReal").classList.toggle("hidden",t!=="real"); $("aiSim").classList.toggle("hidden",t!=="sim");
+}
+$("aiTabReal").onclick=()=>setAiTab("real");
+$("aiTabSim").onclick=()=>setAiTab("sim");
+$("chatbotNames").textContent = CONFIG.CHATBOTS;
+$("copySpecBtn").onclick=async()=>{
+  const txt = "Write a Python function that meets this specification:\n\n"+specText(STAGES[state.current]);
+  try{ await navigator.clipboard.writeText(txt); toast("Specification copied. Add your own instructions too."); }
+  catch(e){ $("aiCode").value=txt; $("aiCode").select(); toast("Copying isn't allowed here. The text is selected in step 2, so press Ctrl+C."); }
+};
+$("aiCode").oninput=()=>{state.stages[state.current].aiCode=$("aiCode").value; saveState();};
+
+function renderChat(){
+  const log=$("chatLog");
+  if(!simChat.length){ log.innerHTML=`<div class="bubble bot"><div class="who">Pixel (simulated)</div>Hi, I'm Pixel. Tell me what function you need for <b>${esc(STAGES[state.current].title.toLowerCase())}</b> and I'll write it.</div>`; return; }
+  log.innerHTML = simChat.map((m,k)=> m.me ? `<div class="bubble me">${esc(m.text)}</div>` :
+    `<div class="bubble bot"><div class="who">Pixel (simulated)</div>${esc(m.text)}${m.code?`<pre>${esc(m.code)}</pre>`:""}${m.after?`<p class="small">${m.after}</p>`:""}${m.code?`<div style="margin-top:.35rem"><button class="btn sm" type="button" data-use="${k}">Use this code</button></div>`:""}</div>`).join("");
+  log.querySelectorAll("[data-use]").forEach(b=>b.onclick=()=>{
+    const m=simChat[+b.dataset.use]; $("aiCode").value=m.code; state.stages[state.current].aiCode=m.code; lastAIvariant=m.variant; saveState();
+    toast("Code copied into step 2. Now test it.");
+  });
+  log.scrollTop=log.scrollHeight;
+}
+$("chatForm").onsubmit=e=>{
+  e.preventDefault();
+  const p=$("chatInput").value.trim(); if(!p) return;
+  const ai=STAGES[state.current].ai;
+  simChat.push({me:true,text:p});
+  let reply;
+  const prevBot=[...simChat].reverse().find(m=>!m.me && m.bucket);
+  if(p.length<12 && !prevBot){
+    reply={text:"Could you tell me a bit more? I'll write a better function if you describe what it should do.",code:"",after:"",variant:null};
+  } else {
+    // A follow-up asking for a fix continues the same conversation; otherwise classify the new prompt
+    let bucket;
+    if(prevBot && FIX_WORDS.test(p)){
+      bucket = prevBot.bucket;
+      const fresh = ai.classify(p);
+      // a fix request that adds the missing details moves to the better bucket
+      if(fresh!=="vague" && fresh!==bucket) bucket = fresh;
+      else simIndex[bucket] = (simIndex[bucket]||0) + 1;
+    } else {
+      bucket = ai.classify(p);
+      if(prevBot && prevBot.bucket===bucket) simIndex[bucket] = (simIndex[bucket]||0) + 1;
+    }
+    const list = ai.attempts[bucket];
+    const idx = Math.min(simIndex[bucket]||0, list.length-1);
+    simIndex[bucket] = idx;
+    const key = list[idx], v = ai.variants[key];
+    let text = v.text;
+    if(prevBot && key!=="correct" && prevBot.variant===key) text = "Here's my answer again. I think it's right:";
+    reply={text, code:v.code, after:v.after, variant:key, bucket};
+  }
+  $("chatInput").value="";
+  simChat.push(reply); renderChat();
+};
+
+$("testAiBtn").onclick=()=>{
+  if(!py){ toast("Python is still loading…"); return; }
+  const i=state.current, s=STAGES[i], st=state.stages[i];
+  const aiCode=$("aiCode").value;
+  if(!aiCode.trim()){ toast("Paste the AI's code into step 2 first."); return; }
+  st.aiCode=aiCode; saveState();
+  const match = Object.entries(s.ai.variants).find(([v,r])=>r.code.trim()===aiCode.trim());
+  lastAIvariant = match ? match[0] : null;
+  const aiRes = pyRun(aiCode, s.test, depsCode(s));
+  const oursCode = st.passed ? st.py : currentCode();
+  const ours = pyRun(oursCode, s.test, depsCode(s));
+  const lines = c => c.split("\n").filter(l=>l.trim() && !l.trim().startsWith("#")).length;
+  const summary = r => r.error ? "Error" : r.tournament ? `${r.tournament.filter(t=>t.beaten).length} of 5 bots beaten` : `${r.tests.filter(t=>t.pass).length} of ${r.tests.length} tests`;
+  let h = `<div class="tablewrap"><table class="res"><tr><th></th><th>Your code</th><th>AI's code</th></tr>
+    <tr><td>Result</td><td>${summary(ours)}</td><td class="${aiRes.ok?"ok":"no"}">${summary(aiRes)}</td></tr>
+    <tr><td>Lines of code</td><td>${lines(oursCode)}</td><td>${lines(aiCode)}</td></tr></table></div>`;
+  h += `<div class="pair" style="margin-top:.6rem"><div><div class="note">Your code</div><pre>${esc(oursCode)}</pre></div><div><div class="note">AI's code</div><pre>${esc(aiCode)}</pre></div></div>`;
+  h += `<div class="results" style="margin-top:.6rem">${renderResults(aiRes, true)}</div>`;
+  const tip = lastAIvariant ? s.ai.variants[lastAIvariant].tip : "";
+  if(tip) h += `<div class="hint" style="margin-top:.6rem"><b>What went wrong?</b> ${tip}</div>`;
+  else if(!aiRes.ok && !aiRes.error) h += `<div class="hint" style="margin-top:.6rem"><b>What went wrong?</b> Look at the failing tests. What did the AI miss? Tell it what went wrong and ask again.</div>`;
+  else if(aiRes.ok) h += `<p class="note" style="margin-top:.6rem">The AI's code passes. Is it as easy to read and change as yours?</p>`;
+  h += `<div style="margin-top:.9rem;display:flex;flex-direction:column;gap:.5rem">
+    <p><b>Your verdict.</b> Which version would you put in the game?</p>
+    <div class="chips">${["Ours","The AI's","A mix of both"].map(o=>`<label><input type="radio" name="ship" value="${o}">${o}</label>`).join("")}</div>
+    <p>What did you notice? Pick any that apply.</p>
+    <div class="chips" id="noticeChips">${REFLECT_CHIPS.map(o=>`<label><input type="checkbox" value="${esc(o)}">${esc(o)}</label>`).join("")}</div>
+    <div><button class="btn" type="button" id="verdictBtn">Submit verdict${st.aiBonus?"":` (+${CONFIG.AI_BONUS} pts)`}</button></div>
+    <div id="verdictOut"></div></div>`;
+  $("compareOut").innerHTML = h;
+  $("verdictBtn").onclick=()=>{
+    const ship=document.querySelector('input[name="ship"]:checked');
+    const notes=[...document.querySelectorAll('#noticeChips input:checked')];
+    if(!ship || !notes.length){ toast("Choose which version you'd use and at least one thing you noticed."); return; }
+    if(!st.aiBonus){ st.aiBonus=true; saveState(); renderNav(); renderBrief(); $("aiBonusNote").textContent=`Bonus earned: +${CONFIG.AI_BONUS} pts`; }
+    $("verdictOut").innerHTML = `<div class="status pass">Verdict recorded.</div><p class="small" style="margin-top:.5rem"><b>Think about it:</b> ${s.discussion}</p>`;
+    $("verdictBtn").disabled=true;
+  };
+};
+
+/* =====================================================================
+   Finish, code and download
+   ===================================================================== */
+function fnv(str){let h=0x811c9dc5; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0;} return h>>>0;}
+function teamCode(team, score){
+  const sc = score.toString(36).toUpperCase().padStart(3,"0");
+  const chk = (fnv(CONFIG.CODE_SECRET+"|"+team.trim().toLowerCase()+"|"+score) % 46656).toString(36).toUpperCase().padStart(3,"0");
+  return `${CONFIG.CODE_PREFIX}-${sc}-${chk}`;
+}
+function showFinish(){
+  const score=totalScore();
+  const rows = STAGES.map((s,i)=>{const st=state.stages[i];
+    const detail = st.passed ? (s.key==="choose_move"?`${st.botsBeaten} bots beaten`:"passed") : (unlocked(i)?"not finished":"locked");
+    const extra = [st.hints?`${st.hints} hint${st.hints>1?"s":""}`:"", st.aiBonus?"AI compared":""].filter(Boolean).join(", ");
+    return `<tr><td>${i+1}. ${esc(s.title)} <span class="small muted">(${detail}${extra?", "+extra:""})</span></td><td>${stagePoints(i)}</td></tr>`;}).join("");
+  $("finishBody").innerHTML = `
+    <p>Team <b>${esc(state.team)}</b></p>
+    <table class="score">${rows}<tr><td><b>Total</b></td><td>${score}</td></tr></table>
+    <p>Show this code to your facilitator for the leaderboard:</p>
+    <div class="bigcode">${teamCode(state.team, score)}</div>
+    <p class="small muted">Your score and code update if you go back and complete more.</p>
+    <h3>What you just did</h3>
+    <p class="small">You worked like a software development team. You turned a <b>specification</b> into code, used <b>automated tests</b> to check it, <b>reused</b> your own functions, <b>validated input</b>, handled a <b>change request</b>, and built a simple <b>AI strategy</b>. You also caught mistakes in <b>AI-written code</b> instead of trusting it. That's why companies still need human software engineers.</p>
+    <p class="small"><a href="${esc(CONFIG.COURSES_URL)}" target="_blank" rel="noopener">${esc(CONFIG.COURSES_TEXT)}</a></p>`;
+  openModal("finish");
+}
+$("finishBtn").onclick=showFinish;
+$("closeFinish").onclick=()=>closeModal("finish");
+$("downloadPy").onclick=()=>{
+  const allCore = ["beats","round_result","clean_move","match_winner"].every(passedKey);
+  let src = `# Rock Paper Scissors, built by team ${state.team.replace(/\n/g," ")}\n# Made in the Game Build Sprint (${CONFIG.UNIVERSITY}).\n# Run it with Python 3:  python rps_game.py\n\nimport random\n\n`;
+  src += gameProgram() + "\n\n";
+  if(allCore){
+    const five = passedKey("beats5"), strat = passedKey("choose_move");
+    src += `
+MOVES = ${five?'["rock", "paper", "scissors", "lizard", "spock"]':'["rock", "paper", "scissors"]'}
+
+
+def computer_move(history):
+    ${strat?(five?'move = choose_move(history)\n    return move if move in MOVES else random.choice(MOVES)':'return choose_move(history)'):'return random.choice(MOVES)'}
+
+
+def main():
+    best_of = 5
+    player_score = 0
+    computer_score = 0
+    history = []
+    print("Rock Paper Scissors! Best of", best_of)
+    while match_winner(player_score, computer_score, best_of) is None:
+        text = input("Your move: ")
+        move = clean_move(text)${five?'\n        if move is None and text.strip().lower() in MOVES:\n            move = text.strip().lower()':''}
+        if move is None:
+            print("Sorry, I don't understand that move.")
+            continue
+        comp = computer_move(history)
+        history.append(move)
+        result = round_result(move, comp)
+        print("Computer played", comp, "-", "you", result)
+        if result == "win":
+            player_score += 1
+        elif result == "lose":
+            computer_score += 1
+        print("Score:", player_score, "-", computer_score)
+    print("Match winner:", match_winner(player_score, computer_score, best_of))
+
+
+if __name__ == "__main__":
+    main()
+`;
+  } else {
+    src += `# Finish stages 1 to 4 to get a playable version of the game in this file.\n`;
+  }
+  const blob=new Blob([src],{type:"text/x-python"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="rps_game.py"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+};
+
+function toast(msg){
+  const t=document.createElement("div"); t.className="toast"; t.textContent=msg; t.setAttribute("role","status");
+  document.body.appendChild(t); setTimeout(()=>t.remove(),3500);
+}
+
+/* =====================================================================
+   Start up
+   ===================================================================== */
+$("tabBlocks").onclick=()=>setMode("blocks");
+$("tabPy").onclick=()=>setMode("python");
+$("runBtn").onclick=runTests;
+$("convertBtn").onclick=async()=>{
+  const code=blocksToPython();
+  if(!await askConfirm("Copy the Python from your blocks into the Python editor? Changes you then make in Python won't go back into the blocks.","Convert to Python")) return;
+  cm.setValue(code); state.stages[state.current].py_draft=code; setMode("python");
+};
+$("resetCodeBtn").onclick=async()=>{
+  if(!await askConfirm("Reset this stage's code to the starting version? Your current code for this stage will be lost.","Reset code")) return;
+  const s=STAGES[state.current], st=state.stages[state.current];
+  loadingStage=true;
+  if(state.mode==="blocks"){ st.blocks=null; ws.clear(); Blockly.serialization.workspaces.load(starterBlocks(s), ws); updateGenPy(); st.blocks=Blockly.serialization.workspaces.save(ws); }
+  else { st.py_draft=null; cm.setValue(s.starterPy); }
+  loadingStage=false; saveState();
+};
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if(!$("finish").classList.contains("hidden")) closeModal("finish"); } });
+
+function welcome(){
+  openModal("welcome");
+  $("teamName").value = state.team || "";
+  let pick = state.mode || "blocks";
+  const upd=()=>{$("chooseBlocks").classList.toggle("on",pick==="blocks"); $("choosePy").classList.toggle("on",pick==="python");};
+  upd();
+  $("chooseBlocks").onclick=()=>{pick="blocks";upd();};
+  $("choosePy").onclick=()=>{pick="python";upd();};
+  $("startBtn").onclick=()=>{
+    const t=$("teamName").value.trim();
+    if(!t){ $("teamName").focus(); toast("Give your team a name first."); return; }
+    state.team=t; state.started=true; saveState();
+    closeModal("welcome");
+    setMode(pick); renderNav();
+  };
+  setTimeout(()=>$("teamName").focus(),50);
+}
+
+function boot(){
+  if(CONFIG.LOGO_URL){ $("logo").src=CONFIG.LOGO_URL; $("logo").alt=CONFIG.UNIVERSITY; } else $("logo").remove();
+  try{ initBlockly(); }catch(e){ console.error(e); $("blocksPane").innerHTML=`<div class="status fail">Code blocks couldn't load. Use the Python tab instead.</div>`; ws=null; if(state.mode==="blocks") state.mode="python"; }
+  try{ initEditor(); }catch(e){ console.error(e); }
+  setMode(state.mode);
+  setAiTab("sim");
+  gotoStage(state.current);
+  resetMatch("Pick a move to play.");
+  if(!state.started) welcome();
+  startPython();
+}
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@11.1.1/blockly_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@11.1.1/blocks_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@11.1.1/python_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@11.1.1/msg/en.js"></script>
+<script>boot();</script>
+</body>
+</html>
