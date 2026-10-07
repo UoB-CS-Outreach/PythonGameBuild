@@ -28,23 +28,35 @@ The class plays the part of developers at a small games studio. The game is spli
 
 At the end, teams get a score breakdown, a code for the leaderboard, and can download their finished game as a Python file to run at home.
 
+## Two versions
+
+| | Full version | Short version |
+|---|---|---|
+| Length | About 60 minutes | About 35 minutes |
+| Student page | `index.html` (the repository's main URL) | `short.html` |
+| Stages | All six | 1, 2, 3 and the computer opponent (four stages) |
+| Sprint countdown | 45 minutes | 25 minutes |
+
+The short version leaves out "Who wins the match?" and "Lizard and Spock". It keeps the stages where Pixel's mistakes are most instructive and still ends with the strategy tournament. Each version saves progress separately, so a device can be used for both.
+
 ## Running a session
 
 - **Audience:** Year 12/13 students or equivalent.
 - **Group size:** 30–60 students in teams of 3–5.
-- **Time:** about 60 minutes: 7-minute brief, about 43 minutes of sprint time, and a debrief.
+- **Time:** about 60 minutes (7-minute brief, about 43 minutes of sprint time, and a debrief), or about 35 minutes for the short version (5-minute brief, 25-minute sprint, short debrief).
 - **Equipment:** one laptop per team and a projector for the facilitator.
 - **Network:** the page loads Python (Pyodide), Blockly and CodeMirror from `cdn.jsdelivr.net` and `cdnjs.cloudflare.com`. Test it on the school's network beforehand.
 
 ## Links
 
-- Students: the GitHub Pages URL for this repository.
-- Facilitator: the same URL with `facilitator.html` added to the end. It has the countdown, leaderboard, run sheet, debrief prompts, troubleshooting tips and model solutions.
+- Students, full version: the GitHub Pages URL for this repository.
+- Students, short version: the same URL with `short.html` added to the end.
+- Facilitator: the same URL with `facilitator.html` added to the end. It has the countdown, leaderboard, run sheet, debrief prompts, troubleshooting tips and model solutions. Choose the full or short version at the top of the page and the countdown, run sheet and debrief change to match.
 
 ## Scoring
 
-- Stages 1–5: 100 points each.
-- Stage 6: 60 points, plus 10 for each of the five bots beaten. Beating 3 passes the stage.
+- Each stage before the computer opponent: 100 points.
+- Computer opponent (stage 6, or stage 4 in the short version): 60 points, plus 10 for each of the five bots beaten. Beating 3 passes the stage.
 - Each hint: −15 points.
 - AI comparison with a verdict: +25 points per stage.
 
@@ -52,7 +64,8 @@ At the end, teams get a score breakdown, a code for the leaderboard, and can dow
 
 - All code runs in the student's browser. No personal data is collected, and progress is saved only on that device.
 - The leaderboard code is tied to the team name and score. It discourages casual cheating but isn't secure.
-- University details, links, points and the option to allow AI comparison before a stage is passed are in the `CONFIG` block near the top of the script in `index.html`. The countdown length is in `facilitator.html`. If you change `CODE_SECRET`, change it in both files.
+- University details, links, points and the option to allow AI comparison before a stage is passed are in the `CONFIG` block near the top of the script in `index.html`. The countdown lengths are in `facilitator.html`. If you change `CODE_SECRET`, change it in every file.
+- `short.html` is a copy of `index.html` with a different `STAGES` list, `STORE_KEY` and title in its `CONFIG` block. If you edit `index.html`, make the same edit in `short.html`, or copy `index.html` over it and change those three settings again.
 
 ## Contact
 

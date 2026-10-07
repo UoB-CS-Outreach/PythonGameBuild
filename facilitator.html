@@ -44,6 +44,11 @@ summary{cursor:pointer;font-weight:600;color:var(--navy-2)}
 pre{background:#f7f8fb;border:1px solid var(--line);border-radius:8px;padding:.6rem;overflow:auto;font-size:.88rem}
 code,pre{font-family:ui-monospace,Consolas,Menlo,monospace}
 .x{background:none;border:0;color:var(--fail);cursor:pointer;font-size:1rem}
+.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px}
+.seg button{border:0;background:none;padding:.35rem .9rem;border-radius:6px;cursor:pointer;color:var(--muted);font:inherit;font-weight:700}
+.seg button.on{background:#fff;color:var(--navy);box-shadow:0 1px 2px rgba(8,31,61,.12)}
+.vbar{grid-column:1/-1;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+body.v-short .only-full{display:none} body:not(.v-short) .only-short{display:none}
 /* Projector mode */
 body.proj main{grid-template-columns:1fr 1fr;max-width:none}
 body.proj .notproj{display:none}
@@ -60,6 +65,14 @@ body.proj .addrow{display:none}
   <button type="button" id="projBtn">Projector view</button>
 </header>
 <main>
+  <div class="vbar notproj">
+    <div class="seg" role="tablist" aria-label="Activity version">
+      <button type="button" id="vFull">Full version, 60 minutes</button>
+      <button type="button" id="vShort">Short version, 35 minutes</button>
+    </div>
+    <span class="small muted only-full">Six stages. Students use the main page.</span>
+    <span class="small muted only-short">Four stages. Students use <code>short.html</code>.</span>
+  </div>
   <section class="card">
     <h2>Countdown</h2>
     <div id="clock">45:00</div>
@@ -85,7 +98,26 @@ body.proj .addrow{display:none}
     <p class="small muted notproj">Type the team name exactly as the team entered it; capitals don't matter. If a team adds a new code later, its row is updated. The leaderboard is saved on this computer only.</p>
   </section>
 
-  <section class="card wide notproj">
+  <section class="card wide notproj only-short">
+    <h2>Run sheet (35 minutes)</h2>
+    <ol>
+      <li><b>0–4 min: brief.</b> Teams of 3–5 open <code>short.html</code> on one device each, ideally before the session starts so Python has loaded. Explain the story: they are developers at a games studio, building a Rock Paper Scissors game from four tickets. Each ticket is one function with automatic tests. Point out the choice of code blocks or Python.</li>
+      <li><b>4–5 min: the AI comparison.</b> After passing a stage, teams ask Pixel (or a real chatbot) for the same function, test its code and give a verdict for bonus points. Warn them that Pixel's first answer is usually wrong, even for a good prompt, so they need to test it and tell it what went wrong.</li>
+      <li><b>5–30 min: sprint.</b> Start the 25-minute countdown. Most teams finish stages 1–3 in about 15 minutes. Stage 4, the strategy tournament, stretches stronger teams. If a team is stuck for more than a couple of minutes, point them to the hints (−15 points each).</li>
+      <li><b>30–31 min: codes.</b> Teams press “Finish and get code” and read out their team name and code. Add them to the leaderboard and switch to projector view.</li>
+      <li><b>31–35 min: debrief.</b> Pick two or three of the prompts below, then the course and careers slide.</li>
+    </ol>
+    <h3>Scoring</h3>
+    <ul class="small">
+      <li>Stages 1–3: 100 points each.</li>
+      <li>Stage 4: 60 points, plus 10 for each of the five bots beaten (beating 3 passes).</li>
+      <li>Each hint: −15 points.</li>
+      <li>AI comparison with a verdict: +25 points per stage.</li>
+    </ul>
+    <p class="small muted">The short version leaves out “Who wins the match?” and “Lizard and Spock”. Its stage 4 is the full version's stage 6.</p>
+  </section>
+
+  <section class="card wide notproj only-full">
     <h2>Run sheet (60 minutes)</h2>
     <ol>
       <li><b>0–5 min: brief.</b> Teams of 3–5 open the student page on one device each. Explain the story: they are developers at a games studio, building a Rock Paper Scissors game from six tickets. Each ticket is one function with automatic tests. Point out the choice of code blocks or Python, and that the game panel switches on as they complete stages.</li>
@@ -103,7 +135,18 @@ body.proj .addrow{display:none}
     </ul>
   </section>
 
-  <section class="card notproj">
+  <section class="card notproj only-short">
+    <h2>Debrief prompts</h2>
+    <ul>
+      <li><b>Why we still need human developers.</b> Pixel's first answer was wrong in almost every stage, even when the prompt was good. Who spotted the mistake by reading the code, and who only found it from the tests? What would have happened if you'd trusted the AI and shipped its code?</li>
+      <li><b>Confident but wrong.</b> In stage 1, Pixel said its code handled draws when it counted a draw as a win. In stage 4, one strategy's comment said the opposite of what its code did. Where could a confident wrong answer cause real harm, for example in banking, medical or security software?</li>
+      <li><b>Subtle bugs.</b> In stage 3, checking <code>text in "rock paper scissors"</code> instead of a list lets empty text through. Why are bugs that are one character long so easy to miss, and why do they matter most in input validation?</li>
+      <li><b>Your own AI.</b> Your stage 4 strategy predicts the next move from past data. How is that like, and unlike, the chatbot you used?</li>
+      <li><b>Careers.</b> Developers now use and review AI-written code every day. Which skills from today, such as reading code, testing and spotting edge cases, would make you good at that job?</li>
+    </ul>
+  </section>
+
+  <section class="card notproj only-full">
     <h2>Debrief prompts</h2>
     <ul>
       <li><b>Why we still need human developers.</b> Pixel's first answer was wrong in almost every stage, even when the prompt was good. Who spotted the mistake by reading the code, and who only found it from the tests? What would have happened if you'd trusted the AI and shipped its code?</li>
@@ -133,7 +176,7 @@ body.proj .addrow{display:none}
 
   <section class="card wide notproj">
     <h2>Model solutions</h2>
-    <p class="small muted">For helping stuck teams. Many other solutions are just as good.</p>
+    <p class="small muted">For helping stuck teams. Many other solutions are just as good. <span class="only-short">The short version uses stages 1, 2 and 3 below, and stage 6 as its stage 4.</span></p>
     <details><summary>Stage 1: beats</summary><pre>def beats(a, b):
     if a == "rock" and b == "scissors":
         return True
@@ -198,16 +241,31 @@ const CONFIG = {
   LOGO_URL: "https://uob-cs-outreach.github.io/PythonMazeGame/assets/uob-logo.png",
   CODE_PREFIX: "GBS",
   CODE_SECRET: "bradford-gbs-2026",
-  MINUTES: 45
+  MINUTES: 45,          // sprint countdown for the full version
+  SHORT_MINUTES: 25     // sprint countdown for the short version
 };
 const KEY="gbs-facilitator-v1";
 const $=id=>document.getElementById(id);
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 let S; try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!S) S={teams:[], minutes:CONFIG.MINUTES, remaining:CONFIG.MINUTES*60, endAt:null};
+if(!S.version) S.version="full";
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 if(CONFIG.LOGO_URL){$("logo").src=CONFIG.LOGO_URL;$("logo").alt=CONFIG.UNIVERSITY}else $("logo").remove();
+
+/* Version */
+const SPRINT_MINUTES={full:CONFIG.MINUTES, short:CONFIG.SHORT_MINUTES};
+function setVersion(v, resetClock){
+  S.version=v;
+  document.body.classList.toggle("v-short", v==="short");
+  $("vFull").classList.toggle("on", v==="full"); $("vShort").classList.toggle("on", v==="short");
+  if(resetClock && !S.endAt){ S.minutes=SPRINT_MINUTES[v]; S.remaining=S.minutes*60; $("mins").value=S.minutes; }
+  save();
+}
+$("vFull").onclick=()=>{ setVersion("full", true); draw(); };
+$("vShort").onclick=()=>{ setVersion("short", true); draw(); };
+setVersion(S.version, false);
 
 /* Timer */
 $("mins").value=S.minutes;

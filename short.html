@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#081f3d">
 <meta name="description" content="Build a Rock Paper Scissors game in the browser with code blocks or Python, then compare your code with AI-written code.">
-<title>Game Build Sprint</title>
+<title>Game Build Sprint (35 minutes)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
@@ -197,7 +197,7 @@ table.score td:last-child{text-align:right;font-weight:700;font-variant-numeric:
 
 <header class="top">
   <img id="logo" alt="">
-  <div class="title">Game Build Sprint</div>
+  <div class="title">Game Build Sprint <span style="font-weight:400;opacity:.75;margin-left:.4rem">Short version</span></div>
   <div class="grow"></div>
   <div class="meta">
     <span class="pystatus" id="loading">Starting Python…</span>
@@ -385,8 +385,8 @@ const CONFIG = {
   AI_BEFORE_PASS: false,              // true lets teams use the AI comparison before passing a stage
   PYODIDE_URL: "https://cdn.jsdelivr.net/npm/pyodide@0.26.4/",
   // Which stages this version uses, in order. The short (35-minute) version is short.html.
-  STAGES: ["beats", "round_result", "clean_move", "match_winner", "beats5", "choose_move"],
-  STORE_KEY: "gbs-rps-v1"             // where progress is saved; each version needs its own
+  STAGES: ["beats", "round_result", "clean_move", "choose_move"],
+  STORE_KEY: "gbs-rps-short-v1"             // where progress is saved; each version needs its own
 };
 const STORE_KEY = CONFIG.STORE_KEY;
 </script>
